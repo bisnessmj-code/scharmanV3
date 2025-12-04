@@ -1,12 +1,12 @@
 -- ═══════════════════════════════════════════════════════════════
--- SERVER - MODE COURSE POURSUITE V3.5 FINALE (CHASSEUR vs CIBLE)
+-- SERVER - MODE COURSE POURSUITE V3.9 ULTIMATE
 -- ═══════════════════════════════════════════════════════════════
 
 ESX = exports['es_extended']:getSharedObject()
 
 local activeInstances = {}
 local playersInGame = {}
-local waitingPlayers = {} -- File d'attente pour matchmaking
+local waitingPlayers = {}
 local lastUsedBucket = Config.CoursePoursuit.BucketRange.min - 1
 
 -- ═══════════════════════════════════════════════════════════════
@@ -70,14 +70,16 @@ local function CreateInstance(chasseurId, cibleId)
             createdBy = nil
         },
         cibleInZone = false,
-        -- SYSTÈME DE ROUNDS
         currentRound = 1,
         score = {
-            chasseur = 0,
-            cible = 0
+            playerA = 0,  -- ✅ V3.9: Score Joueur A (fixe)
+            playerB = 0   -- ✅ V3.9: Score Joueur B (fixe)
         },
+        playerAId = chasseurId,  -- ✅ V3.9: ID permanent Joueur A
+        playerBId = cibleId,     -- ✅ V3.9: ID permanent Joueur B
         roundInProgress = false,
-        matchFinished = false
+        matchFinished = false,
+        vehicles = {}
     }
     
     SetRoutingBucketPopulationEnabled(bucket, false)
@@ -97,7 +99,15 @@ local function DeleteInstance(instanceId)
     local instance = activeInstances[instanceId]
     if not instance then return false end
     
-    -- Retirer tous les joueurs
+    -- Nettoyer les véhicules
+    if instance.vehicles then
+        for _, veh in pairs(instance.vehicles) do
+            if DoesEntityExist(veh) then
+                DeleteEntity(veh)
+            end
+        end
+    end
+    
     if instance.players.chasseur then
         RemovePlayerFromInstance(instance.players.chasseur, instanceId)
     end
@@ -136,7 +146,6 @@ local function AddPlayerToInstance(playerId, instance, role)
     SetPlayerRoutingBucket(playerId, instance.bucket)
     Wait(1000)
     
-    -- Créer véhicule pour ce joueur
     local success, vehicleNetId = pcall(function()
         local spawnCoords = Config.CoursePoursuit.SpawnCoords[role]
         local vehicleHash = GetHashKey(instance.vehicleModel)
@@ -156,6 +165,9 @@ local function AddPlayerToInstance(playerId, instance, role)
             error('[SERVER] Échec récupération Network ID')
         end
         
+        -- Stocker le véhicule dans l'instance
+        instance.vehicles[role] = vehicle
+        
         Config.SuccessPrint('[SERVER] Véhicule créé pour ' .. string.upper(role) .. ': ' .. vehicle .. ' NetID: ' .. netId)
         return netId
     end)
@@ -168,7 +180,6 @@ local function AddPlayerToInstance(playerId, instance, role)
         return false
     end
     
-    -- Lancer le jeu pour ce joueur
     TriggerClientEvent('scharman:client:startCoursePoursuit', playerId, {
         instanceId = instance.id,
         spawnCoords = Config.CoursePoursuit.SpawnCoords[role],
@@ -196,13 +207,11 @@ function RemovePlayerFromInstance(playerId, instanceId)
     
     SetPlayerRoutingBucket(playerId, playerData.originalBucket or 0)
     
-    -- Informer l'adversaire
     local opponentId = playerData.opponentId
     if opponentId and playersInGame[opponentId] then
         TriggerClientEvent('scharman:client:courseNotification', opponentId, 
             string.format(Config.CoursePoursuit.Notifications.playerLeft, playerName), 3000)
         
-        -- Terminer la partie pour l'adversaire (victoire par abandon)
         TriggerClientEvent('scharman:client:stopCoursePoursuit', opponentId, true)
     end
     
@@ -210,7 +219,6 @@ function RemovePlayerFromInstance(playerId, instanceId)
     
     TriggerClientEvent('scharman:client:stopCoursePoursuit', playerId)
     
-    -- Supprimer instance si vide
     DeleteInstance(instance.id)
     
     return true
@@ -221,10 +229,8 @@ end
 -- ═══════════════════════════════════════════════════════════════
 
 local function FindOpponent(playerId)
-    -- Chercher dans la file d'attente
     for i, waitingPlayerId in ipairs(waitingPlayers) do
         if waitingPlayerId ~= playerId and GetPlayerPing(waitingPlayerId) > 0 then
-            -- Adversaire trouvé!
             table.remove(waitingPlayers, i)
             return waitingPlayerId
         end
@@ -241,32 +247,24 @@ local function StartMatchmaking(playerId)
     Config.InfoPrint('MATCHMAKING: Joueur ' .. playerId .. ' (' .. xPlayer.getName() .. ')')
     Config.InfoPrint('═══════════════════════════════════════════════════════════════')
     
-    -- Notifier recherche
     TriggerClientEvent('scharman:client:courseNotification', playerId, 
         Config.CoursePoursuit.Notifications.searching, 5000, 'info')
     
-    -- Chercher un adversaire
     local opponentId = FindOpponent(playerId)
     
     if opponentId then
-        -- Adversaire trouvé!
         Config.SuccessPrint('MATCH TROUVÉ: ' .. playerId .. ' vs ' .. opponentId)
         
         local xOpponent = ESX.GetPlayerFromId(opponentId)
         
-        -- Notifier les deux joueurs
         TriggerClientEvent('scharman:client:courseNotification', playerId, 
             Config.CoursePoursuit.Notifications.playerFound, 3000, 'success')
         TriggerClientEvent('scharman:client:courseNotification', opponentId, 
             Config.CoursePoursuit.Notifications.playerFound, 3000, 'success')
         
-        -- IMPORTANT: Attribution des rôles
-        -- Le PREMIER joueur (celui qui a cliqué) = CHASSEUR
-        -- Le DEUXIÈME joueur (celui en attente) = CIBLE
-        local chasseurId = opponentId -- L'adversaire qui attendait devient CHASSEUR
-        local cibleId = playerId      -- Le nouveau joueur devient CIBLE
+        local chasseurId = opponentId
+        local cibleId = playerId
         
-        -- Créer instance
         local instance = CreateInstance(chasseurId, cibleId)
         
         if not instance then
@@ -277,7 +275,6 @@ local function StartMatchmaking(playerId)
             return
         end
         
-        -- Ajouter les deux joueurs avec leurs rôles
         Wait(500)
         AddPlayerToInstance(chasseurId, instance, 'chasseur')
         Wait(500)
@@ -287,7 +284,6 @@ local function StartMatchmaking(playerId)
         Config.InfoPrint('  CHASSEUR: ' .. xOpponent.getName() .. ' [' .. opponentId .. ']')
         Config.InfoPrint('  CIBLE: ' .. xPlayer.getName() .. ' [' .. playerId .. ']')
     else
-        -- Aucun adversaire, ajouter à la file d'attente
         Config.InfoPrint('Aucun adversaire trouvé, ajout file d\'attente')
         table.insert(waitingPlayers, playerId)
         
@@ -315,7 +311,6 @@ RegisterNetEvent('scharman:server:zoneCreated', function(instanceId, position)
         return
     end
     
-    -- VÉRIFICATION: Seul le CHASSEUR peut créer la zone
     if playerData.role ~= 'chasseur' then
         Config.ErrorPrint('[ZONE] ⚠️ TENTATIVE CRÉATION PAR CIBLE - BLOQUÉ!')
         return
@@ -324,12 +319,10 @@ RegisterNetEvent('scharman:server:zoneCreated', function(instanceId, position)
     Config.InfoPrint('[ZONE] 🔴 ZONE CRÉÉE par CHASSEUR ' .. source)
     Config.DebugPrint('[ZONE] Position: ' .. tostring(position))
     
-    -- Enregistrer la zone
     instance.warZone.active = true
     instance.warZone.position = position
     instance.warZone.createdBy = source
     
-    -- Informer la CIBLE
     local cibleId = instance.players.cible
     if cibleId and cibleId ~= source then
         Config.InfoPrint('[ZONE] Notification CIBLE: ' .. cibleId)
@@ -354,7 +347,6 @@ RegisterNetEvent('scharman:server:playerEnteredZone', function(instanceId)
         return
     end
     
-    -- VÉRIFICATION: Seule la CIBLE peut rejoindre la zone
     if playerData.role ~= 'cible' then
         Config.ErrorPrint('[ZONE] ⚠️ TENTATIVE ENTRÉE PAR CHASSEUR - IGNORÉ!')
         return
@@ -362,10 +354,8 @@ RegisterNetEvent('scharman:server:playerEnteredZone', function(instanceId)
     
     Config.InfoPrint('[ZONE] ✅ CIBLE ' .. source .. ' a rejoint la zone')
     
-    -- Marquer la cible comme dans la zone
     instance.cibleInZone = true
     
-    -- Informer le CHASSEUR
     local chasseurId = instance.players.chasseur
     if chasseurId and chasseurId ~= source then
         Config.InfoPrint('[ZONE] Notification CHASSEUR: ' .. chasseurId)
@@ -376,92 +366,88 @@ RegisterNetEvent('scharman:server:playerEnteredZone', function(instanceId)
 end)
 
 -- ═══════════════════════════════════════════════════════════════
--- SYSTÈME DE ROUNDS
+-- SYSTÈME DE ROUNDS - FIX COMPLET
 -- ═══════════════════════════════════════════════════════════════
 
-local function ShowRoundEnd(instance, winnerId, loserId, winnerRole)
-    local chasseurId = instance.players.chasseur
-    local cibleId = instance.players.cible
-    
-    Config.InfoPrint('[ROUND] Manche ' .. instance.currentRound .. ' terminée - Gagnant: ' .. winnerRole)
-    
-    -- Afficher écran victoire au gagnant IMMÉDIATEMENT
-    TriggerClientEvent('scharman:client:showRoundVictory', winnerId, {
-        round = instance.currentRound,
-        score = instance.score
-    })
-    
-    -- Attendre un peu avant scoreboard
-    Wait(3000)
-    
-    -- Afficher scoreboard aux deux joueurs
-    TriggerClientEvent('scharman:client:showRoundScoreboard', chasseurId, {
-        round = instance.currentRound,
-        score = instance.score,
-        timeUntilNext = Config.CoursePoursuit.TimeBetweenRounds
-    })
-    
-    TriggerClientEvent('scharman:client:showRoundScoreboard', cibleId, {
-        round = instance.currentRound,
-        score = instance.score,
-        timeUntilNext = Config.CoursePoursuit.TimeBetweenRounds
-    })
-end
-
 local function CheckMatchEnd(instance)
-    local chasseurWins = instance.score.chasseur
-    local cibleWins = instance.score.cible
+    -- ✅ V3.9: Vérifier score par joueur (pas par rôle)
+    local playerAWins = instance.score.playerA
+    local playerBWins = instance.score.playerB
     
-    -- Vérifier si quelqu'un a gagné le match (2 victoires)
-    if chasseurWins >= Config.CoursePoursuit.RoundsToWin then
-        return true, 'chasseur'
-    elseif cibleWins >= Config.CoursePoursuit.RoundsToWin then
-        return true, 'cible'
+    if playerAWins >= Config.CoursePoursuit.RoundsToWin then
+        Config.SuccessPrint('[MATCH] JOUEUR A GAGNE LE MATCH ' .. playerAWins .. '-' .. playerBWins)
+        return true, instance.playerAId
+    elseif playerBWins >= Config.CoursePoursuit.RoundsToWin then
+        Config.SuccessPrint('[MATCH] JOUEUR B GAGNE LE MATCH ' .. playerBWins .. '-' .. playerAWins)
+        return true, instance.playerBId
     end
     
     return false, nil
 end
 
-local function EndMatch(instance, winnerRole)
+local function EndMatch(instance, winnerId)
     instance.matchFinished = true
     
     local chasseurId = instance.players.chasseur
     local cibleId = instance.players.cible
     
-    Config.InfoPrint('[MATCH] Match terminé - Gagnant final: ' .. winnerRole)
+    Config.InfoPrint('[MATCH] Match terminé - Gagnant final: ' .. winnerId)
     
-    -- Afficher écran fin de match
+    -- ✅ V3.9: Déterminer winner basé sur winnerId et isPlayerA
     TriggerClientEvent('scharman:client:showMatchEnd', chasseurId, {
-        winner = (winnerRole == 'chasseur') and 'me' or 'opponent',
-        finalScore = instance.score
+        winner = (winnerId == chasseurId) and 'me' or 'opponent',
+        finalScore = instance.score,
+        isPlayerA = (chasseurId == instance.playerAId)  -- ✅ V3.9: Pour conversion score
     })
     
     TriggerClientEvent('scharman:client:showMatchEnd', cibleId, {
-        winner = (winnerRole == 'cible') and 'me' or 'opponent',
-        finalScore = instance.score
+        winner = (winnerId == cibleId) and 'me' or 'opponent',
+        finalScore = instance.score,
+        isPlayerA = (cibleId == instance.playerAId)  -- ✅ V3.9: Pour conversion score
     })
     
-    -- Attendre avant de terminer
     Wait(8000)
     
-    -- Terminer pour les deux joueurs
-    TriggerClientEvent('scharman:client:stopCoursePoursuit', chasseurId, (winnerRole == 'chasseur'))
-    TriggerClientEvent('scharman:client:stopCoursePoursuit', cibleId, (winnerRole == 'cible'))
+    TriggerClientEvent('scharman:client:stopCoursePoursuit', chasseurId, (winnerId == chasseurId))
+    TriggerClientEvent('scharman:client:stopCoursePoursuit', cibleId, (winnerId == cibleId))
     
-    -- Supprimer instance
     Wait(3000)
     DeleteInstance(instance.id)
 end
 
+-- ═══════════════════════════════════════════════════════════════
+-- FIX: Fonction StartNextRound avec VRAIE création de véhicules
+-- ═══════════════════════════════════════════════════════════════
 local function StartNextRound(instance)
     instance.currentRound = instance.currentRound + 1
     instance.roundInProgress = false
+    
+    -- ✅ NOUVEAU V3.7: Inverser les rôles à chaque round pour l'équité
+    if instance.currentRound > 1 then
+        local tempChasseur = instance.players.chasseur
+        instance.players.chasseur = instance.players.cible
+        instance.players.cible = tempChasseur
+        
+        Config.InfoPrint('[ROUND] 🔄 INVERSION DES RÔLES:')
+        Config.InfoPrint('  Nouveau CHASSEUR: ' .. instance.players.chasseur)
+        Config.InfoPrint('  Nouvelle CIBLE: ' .. instance.players.cible)
+        
+        -- Mettre à jour les données des joueurs aussi
+        if playersInGame[tempChasseur] then
+            playersInGame[tempChasseur].role = 'cible'
+            playersInGame[tempChasseur].opponentId = instance.players.chasseur
+        end
+        if playersInGame[instance.players.chasseur] then
+            playersInGame[instance.players.chasseur].role = 'chasseur'
+            playersInGame[instance.players.chasseur].opponentId = instance.players.cible
+        end
+    end
     instance.warZone.active = false
     instance.warZone.position = nil
     instance.warZone.createdBy = nil
     instance.cibleInZone = false
     
-    Config.InfoPrint('[ROUND] Démarrage manche ' .. instance.currentRound)
+    Config.InfoPrint('[ROUND] ═══ DÉMARRAGE MANCHE ' .. instance.currentRound .. ' ═══')
     
     local chasseurId = instance.players.chasseur
     local cibleId = instance.players.cible
@@ -473,47 +459,80 @@ local function StartNextRound(instance)
     TriggerClientEvent('scharman:client:hideRoundScoreboard', chasseurId)
     TriggerClientEvent('scharman:client:hideRoundScoreboard', cibleId)
     
+    -- Supprimer anciens véhicules
+    if instance.vehicles then
+        for role, veh in pairs(instance.vehicles) do
+            if DoesEntityExist(veh) then
+                DeleteEntity(veh)
+                Config.DebugPrint('[SERVER] Ancien véhicule ' .. role .. ' supprimé')
+            end
+        end
+        instance.vehicles = {}
+    end
+    
+    Wait(500)
+    
     -- CRÉER NOUVEAUX VÉHICULES
     local vehicleModel = instance.vehicleModel
     local chasseurSpawn = Config.CoursePoursuit.SpawnCoords.chasseur
     local cibleSpawn = Config.CoursePoursuit.SpawnCoords.cible
     
     -- Véhicule CHASSEUR
-    local chasseurVehicle = CreateVehicleServerSetter(vehicleModel, 'automobile', chasseurSpawn.x, chasseurSpawn.y, chasseurSpawn.z, chasseurSpawn.w)
-    while not DoesEntityExist(chasseurVehicle) do Wait(50) end
-    
-    local chasseurNetId = NetworkGetNetworkIdFromEntity(chasseurVehicle)
-    SetNetworkIdExistsOnAllMachines(chasseurNetId, true)
-    SetNetworkIdCanMigrate(chasseurNetId, false)
-    SetPlayerVehicleNetId(chasseurId, chasseurNetId)
-    Config.SuccessPrint('[SERVER] Véhicule créé pour CHASSEUR: ' .. chasseurVehicle .. ' NetID: ' .. chasseurNetId)
-    
-    -- Véhicule CIBLE
-    local cibleVehicle = CreateVehicleServerSetter(vehicleModel, 'automobile', cibleSpawn.x, cibleSpawn.y, cibleSpawn.z, cibleSpawn.w)
-    while not DoesEntityExist(cibleVehicle) do Wait(50) end
-    
-    local cibleNetId = NetworkGetNetworkIdFromEntity(cibleVehicle)
-    SetNetworkIdExistsOnAllMachines(cibleNetId, true)
-    SetNetworkIdCanMigrate(cibleNetId, false)
-    SetPlayerVehicleNetId(cibleId, cibleNetId)
-    Config.SuccessPrint('[SERVER] Véhicule créé pour CIBLE: ' .. cibleVehicle .. ' NetID: ' .. cibleNetId)
-    
+    local chasseurVehicle = CreateVehicle(GetHashKey(vehicleModel), chasseurSpawn.x, chasseurSpawn.y, chasseurSpawn.z, chasseurSpawn.w, true, true)
     Wait(500)
     
-    -- Relancer la manche
+    if not DoesEntityExist(chasseurVehicle) then
+        Config.ErrorPrint('[SERVER] Échec création véhicule CHASSEUR')
+        return
+    end
+    
+    SetEntityRoutingBucket(chasseurVehicle, instance.bucket)
+    local chasseurNetId = NetworkGetNetworkIdFromEntity(chasseurVehicle)
+    instance.vehicles['chasseur'] = chasseurVehicle
+    
+    Config.SuccessPrint('[SERVER] Véhicule CHASSEUR créé: ' .. chasseurVehicle .. ' NetID: ' .. chasseurNetId)
+    
+    -- Véhicule CIBLE
+    local cibleVehicle = CreateVehicle(GetHashKey(vehicleModel), cibleSpawn.x, cibleSpawn.y, cibleSpawn.z, cibleSpawn.w, true, true)
+    Wait(500)
+    
+    if not DoesEntityExist(cibleVehicle) then
+        Config.ErrorPrint('[SERVER] Échec création véhicule CIBLE')
+        -- Supprimer véhicule chasseur si échec cible
+        DeleteEntity(chasseurVehicle)
+        return
+    end
+    
+    SetEntityRoutingBucket(cibleVehicle, instance.bucket)
+    local cibleNetId = NetworkGetNetworkIdFromEntity(cibleVehicle)
+    instance.vehicles['cible'] = cibleVehicle
+    
+    Config.SuccessPrint('[SERVER] Véhicule CIBLE créé: ' .. cibleVehicle .. ' NetID: ' .. cibleNetId)
+    
+    Wait(1000)
+    
+    -- Relancer la manche avec les NetID des nouveaux véhicules
     instance.roundInProgress = true
     
     TriggerClientEvent('scharman:client:startNextRound', chasseurId, {
         instanceId = instance.id,
         round = instance.currentRound,
-        score = instance.score
+        score = instance.score,
+        isPlayerA = (chasseurId == instance.playerAId),  -- ✅ V3.9: Pour afficher le bon score
+        vehicleNetId = chasseurNetId,
+        role = 'chasseur'  -- ✅ V3.8: ENVOYER LE RÔLE
     })
     
     TriggerClientEvent('scharman:client:startNextRound', cibleId, {
         instanceId = instance.id,
         round = instance.currentRound,
-        score = instance.score
+        score = instance.score,
+        isPlayerA = (cibleId == instance.playerAId),  -- ✅ V3.9: Pour afficher le bon score
+        vehicleNetId = cibleNetId,
+        role = 'cible'  -- ✅ V3.8: ENVOYER LE RÔLE
     })
+    
+    Config.SuccessPrint('[ROUND] Manche ' .. instance.currentRound .. ' lancée avec succès!')
 end
 
 RegisterNetEvent('scharman:server:playerDied', function(instanceId)
@@ -527,57 +546,76 @@ RegisterNetEvent('scharman:server:playerDied', function(instanceId)
     
     Config.InfoPrint('💀 Joueur ' .. source .. ' (' .. string.upper(playerData.role) .. ') est mort')
     
-    -- Déterminer gagnant/perdant
     local loserId = source
     local loserRole = playerData.role
     local winnerId = playerData.opponentId
     local winnerRole = (loserRole == 'chasseur') and 'cible' or 'chasseur'
     
-    -- Incrémenter score gagnant
-    if winnerRole == 'chasseur' then
-        instance.score.chasseur = instance.score.chasseur + 1
+    -- ✅ V3.9: Incrémenter score du JOUEUR gagnant (pas du rôle)
+    if winnerId == instance.playerAId then
+        instance.score.playerA = instance.score.playerA + 1
+        Config.InfoPrint('[SCORE] Joueur A gagne! Score: ' .. instance.score.playerA .. '-' .. instance.score.playerB)
     else
-        instance.score.cible = instance.score.cible + 1
+        instance.score.playerB = instance.score.playerB + 1
+        Config.InfoPrint('[SCORE] Joueur B gagne! Score: ' .. instance.score.playerA .. '-' .. instance.score.playerB)
     end
     
-    Config.InfoPrint('[SCORE] CHASSEUR: ' .. instance.score.chasseur .. ' - CIBLE: ' .. instance.score.cible)
-    
-    -- ENVOYER VICTOIRE IMMÉDIATEMENT AU GAGNANT
+    -- Afficher victoire immédiatement au gagnant
     TriggerClientEvent('scharman:client:showRoundVictory', winnerId, {
         round = instance.currentRound,
-        score = instance.score
+        score = instance.score,
+        isPlayerA = (winnerId == instance.playerAId)  -- ✅ V3.9: Pour afficher le bon score
     })
     
     -- Vérifier si match terminé
     local matchEnded, matchWinner = CheckMatchEnd(instance)
     
     if matchEnded then
-        -- FIN DU MATCH (2 victoires atteintes)
-        Wait(3000)  -- Laisser voir victoire
-        ShowRoundEnd(instance, winnerId, loserId, winnerRole)
-        Wait(5000)
-        EndMatch(instance, matchWinner)
-    else
-        -- MANCHE SUIVANTE
-        Wait(3000)  -- Laisser voir victoire
+        -- FIN DU MATCH
+        Wait(3000)
         
-        -- Afficher scoreboard
         local chasseurId = instance.players.chasseur
         local cibleId = instance.players.cible
         
         TriggerClientEvent('scharman:client:showRoundScoreboard', chasseurId, {
             round = instance.currentRound,
             score = instance.score,
+            isPlayerA = (chasseurId == instance.playerAId),  -- ✅ V3.9: Pour afficher le bon score
+            timeUntilNext = 5000
+        })
+        
+        TriggerClientEvent('scharman:client:showRoundScoreboard', cibleId, {
+            round = instance.currentRound,
+            score = instance.score,
+            isPlayerA = (cibleId == instance.playerAId),  -- ✅ V3.9: Pour afficher le bon score
+            timeUntilNext = 5000
+        })
+        
+        Wait(5000)
+        EndMatch(instance, matchWinner)
+    else
+        -- MANCHE SUIVANTE
+        Wait(3000)
+        
+        local chasseurId = instance.players.chasseur
+        local cibleId = instance.players.cible
+        
+        -- Afficher scoreboard
+        TriggerClientEvent('scharman:client:showRoundScoreboard', chasseurId, {
+            round = instance.currentRound,
+            score = instance.score,
+            isPlayerA = (chasseurId == instance.playerAId),  -- ✅ V3.9: Pour afficher le bon score
             timeUntilNext = Config.CoursePoursuit.TimeBetweenRounds
         })
         
         TriggerClientEvent('scharman:client:showRoundScoreboard', cibleId, {
             round = instance.currentRound,
             score = instance.score,
+            isPlayerA = (cibleId == instance.playerAId),  -- ✅ V3.9: Pour afficher le bon score
             timeUntilNext = Config.CoursePoursuit.TimeBetweenRounds
         })
         
-        -- Arrêter manche en cours pour les deux
+        -- Arrêter manche en cours (avec réanimation)
         Wait(2000)
         TriggerClientEvent('scharman:client:stopRound', loserId)
         TriggerClientEvent('scharman:client:stopRound', winnerId)
@@ -602,13 +640,11 @@ RegisterNetEvent('scharman:server:joinCoursePoursuit', function()
         return
     end
     
-    -- Vérifier si déjà en jeu
     if playersInGame[source] then
         TriggerClientEvent('scharman:client:courseNotification', source, '❌ Vous êtes déjà en partie', 3000)
         return
     end
     
-    -- Vérifier si déjà en file d'attente
     for _, waitingId in ipairs(waitingPlayers) do
         if waitingId == source then
             TriggerClientEvent('scharman:client:courseNotification', source, '⏳ Déjà en file d\'attente', 3000)
@@ -616,7 +652,6 @@ RegisterNetEvent('scharman:server:joinCoursePoursuit', function()
         end
     end
     
-    -- Lancer matchmaking
     StartMatchmaking(source)
 end)
 
@@ -628,7 +663,6 @@ RegisterNetEvent('scharman:server:coursePoursuiteLeft', function()
         RemovePlayerFromInstance(source, playerData.instanceId)
     end
     
-    -- Retirer de la file d'attente si présent
     for i, waitingId in ipairs(waitingPlayers) do
         if waitingId == source then
             table.remove(waitingPlayers, i)
@@ -646,7 +680,6 @@ AddEventHandler('playerDropped', function(reason)
         RemovePlayerFromInstance(source, playerData.instanceId)
     end
     
-    -- Retirer de la file d'attente
     for i, waitingId in ipairs(waitingPlayers) do
         if waitingId == source then
             table.remove(waitingPlayers, i)
@@ -672,12 +705,9 @@ RegisterCommand('course_instances', function(source, args, rawCommand)
         count = count + 1
         print(string.format('%d. Instance: %s (Bucket: %d)', count, instanceId, instance.bucket))
         print(string.format('   CHASSEUR: %d | CIBLE: %d', instance.players.chasseur, instance.players.cible))
+        print(string.format('   Manche: %d | Score: Joueur A: %d - Joueur B: %d', instance.currentRound, instance.score.playerA, instance.score.playerB))
         print(string.format('   Véhicule: %s', instance.vehicleModel))
         print(string.format('   Zone active: %s', instance.warZone.active and 'OUI' or 'NON'))
-        if instance.warZone.active then
-            print(string.format('   Zone créée par: %s (CHASSEUR)', instance.warZone.createdBy))
-            print(string.format('   CIBLE dans zone: %s', instance.cibleInZone and 'OUI' or 'NON'))
-        end
     end
     if count == 0 then print('Aucune instance active') end
     print('═══════════════════════════════════════════════════════════════')
@@ -722,4 +752,4 @@ AddEventHandler('onResourceStop', function(resourceName)
     end
 end)
 
-Config.DebugPrint('server/course_poursuite.lua V3.5 FINALE chargé')
+Config.DebugPrint('server/course_poursuite.lua V3.9 ULTIMATE chargé')

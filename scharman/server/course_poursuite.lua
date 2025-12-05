@@ -560,41 +560,34 @@ RegisterNetEvent('scharman:server:playerDied', function(instanceId)
         Config.InfoPrint('[SCORE] Joueur B gagne! Score: ' .. instance.score.playerA .. '-' .. instance.score.playerB)
     end
     
-    -- Afficher victoire immédiatement au gagnant
-    TriggerClientEvent('scharman:client:showRoundVictory', winnerId, {
-        round = instance.currentRound,
-        score = instance.score,
-        isPlayerA = (winnerId == instance.playerAId)  -- ✅ V3.9: Pour afficher le bon score
-    })
-    
-    -- Vérifier si match terminé
+    -- ✅ V3.9.2: Vérifier si match terminé AVANT d'afficher victoire de manche
     local matchEnded, matchWinner = CheckMatchEnd(instance)
     
     if matchEnded then
-        -- FIN DU MATCH
-        Wait(3000)
+        -- ✅ V3.9.2: FIN DU MATCH → PAS de victoire de manche, directement fin de match
+        Config.SuccessPrint('[MATCH] Match terminé ' .. instance.score.playerA .. '-' .. instance.score.playerB .. ' - Passage direct à fin de match')
         
-        local chasseurId = instance.players.chasseur
-        local cibleId = instance.players.cible
+        Wait(2000)
         
-        TriggerClientEvent('scharman:client:showRoundScoreboard', chasseurId, {
-            round = instance.currentRound,
-            score = instance.score,
-            isPlayerA = (chasseurId == instance.playerAId),  -- ✅ V3.9: Pour afficher le bon score
-            timeUntilNext = 5000
-        })
+        -- Arrêter la manche pour les 2 joueurs (nettoyage)
+        TriggerClientEvent('scharman:client:stopRound', instance.players.chasseur)
+        TriggerClientEvent('scharman:client:stopRound', instance.players.cible)
         
-        TriggerClientEvent('scharman:client:showRoundScoreboard', cibleId, {
-            round = instance.currentRound,
-            score = instance.score,
-            isPlayerA = (cibleId == instance.playerAId),  -- ✅ V3.9: Pour afficher le bon score
-            timeUntilNext = 5000
-        })
+        Wait(1000)
         
-        Wait(5000)
+        -- Afficher directement l'écran de fin de match (SANS scoreboard ni victoire de manche)
         EndMatch(instance, matchWinner)
     else
-        -- MANCHE SUIVANTE
+        -- ✅ MANCHE SUIVANTE: Afficher victoire de manche + scoreboard
+        Config.InfoPrint('[MATCH] Manche ' .. instance.currentRound .. ' terminée - Manche suivante')
+        
+        -- Afficher victoire de manche au gagnant
+        TriggerClientEvent('scharman:client:showRoundVictory', winnerId, {
+            round = instance.currentRound,
+            score = instance.score,
+            isPlayerA = (winnerId == instance.playerAId)
+        })
+        
         Wait(3000)
         
         local chasseurId = instance.players.chasseur

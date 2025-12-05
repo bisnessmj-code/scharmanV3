@@ -23,11 +23,11 @@ Config.CoursePoursuit.Roles = {
 }
 
 Config.CoursePoursuit.SpawnCoords = {
-    chasseur = vector4(-2124.83, -301.81, 13.09, 73.70),
-    cible = vector4(-2134.83, -311.81, 13.09, 73.70)
+    chasseur = vector4(-55.674724, -1110.118652, 26.432250, 70.866142),
+    cible = vector4(-44.189010, -1113.652710, 26.432250, 73.700790)
 }
 
-Config.CoursePoursuit.ReturnToNormalCoords = vector4(-2148.92, -330.63, 12.99, 141.73)
+Config.CoursePoursuit.ReturnToNormalCoords = vector4(-2660.294434, -765.257142, 5.993408, 269.291352)
 
 Config.CoursePoursuit.EnableRounds = true
 Config.CoursePoursuit.MaxRounds = 3

@@ -1,7 +1,7 @@
 const AppState = {
     isOpen: false,
     isAnimating: false,
-    debugMode: true,
+    debugMode: false,
     countdownActive: false,
     vehicleLockActive: false,
     vehicleLockTimer: null

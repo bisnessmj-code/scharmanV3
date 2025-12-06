@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- SERVER - MODE COURSE POURSUITE V3.9 ULTIMATE
+-- SERVER - MODE COURSE POURSUITE V3.9.10
 -- ═══════════════════════════════════════════════════════════════
 
 ESX = exports['es_extended']:getSharedObject()
@@ -406,7 +406,8 @@ local function EndMatch(instance, winnerId)
         isPlayerA = (cibleId == instance.playerAId)  -- ✅ V3.9: Pour conversion score
     })
     
-    Wait(8000)
+    -- ✅ V3.9.10: Réduit de 8000ms à 3000ms (3 secondes au lieu de 8)
+    Wait(3000)
     
     TriggerClientEvent('scharman:client:stopCoursePoursuit', chasseurId, (winnerId == chasseurId))
     TriggerClientEvent('scharman:client:stopCoursePoursuit', cibleId, (winnerId == cibleId))
@@ -452,7 +453,7 @@ local function StartNextRound(instance)
     local chasseurId = instance.players.chasseur
     local cibleId = instance.players.cible
     
-    -- Attendre entre les manches
+    -- Attendre entre les manches (3 secondes en V3.9.10)
     Wait(Config.CoursePoursuit.TimeBetweenRounds)
     
     -- Masquer scoreboard
@@ -745,4 +746,4 @@ AddEventHandler('onResourceStop', function(resourceName)
     end
 end)
 
-Config.DebugPrint('server/course_poursuite.lua V3.9 ULTIMATE chargé')
+Config.DebugPrint('server/course_poursuite.lua V3.9.10 chargé')

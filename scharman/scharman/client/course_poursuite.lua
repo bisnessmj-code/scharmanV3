@@ -4,7 +4,7 @@
 -- ╚════██║██║     ██╔══██║██╔══██║██╔══██╗██║╚██╔╝██║██╔══██║██║╚██╗██║
 -- ███████║╚██████╗██║  ██║██║  ██║██║  ██║██║ ╚═╝ ██║██║  ██║██║ ╚████║
 -- ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
--- CLIENT - MODE COURSE POURSUITE V3.9 ULTIMATE
+-- CLIENT - MODE COURSE POURSUITE V3.9.10
 -- ═══════════════════════════════════════════════════════════════
 
 -- ═══════════════════════════════════════════════════════════════
@@ -25,6 +25,7 @@ local damageZoneThread = nil
 local warZoneThread = nil
 local warningMessageActive = false
 local zoneWaitingThread = nil
+local vehicleShootBlockThread = nil  -- ✅ V3.9.10: Thread blocage tirs véhicule
 
 -- Timers
 local gameEndTime = nil
@@ -279,6 +280,48 @@ local function DeleteWarZone()
     end
     
     Config.SuccessPrint('Zone supprimée')
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ✅ V3.9.10: THREAD BLOCAGE TIRS EN VÉHICULE
+-- ═══════════════════════════════════════════════════════════════
+
+local function StartVehicleShootBlockThread()
+    if vehicleShootBlockThread then return end
+    
+    Config.InfoPrint('[VEHICLE] 🚫 Thread blocage tirs véhicule démarré')
+    
+    vehicleShootBlockThread = CreateThread(function()
+        while inGame do
+            Wait(0)
+            
+            local ped = PlayerPedId()
+            
+            -- Si le joueur est dans un véhicule, bloquer tous les tirs
+            if IsPedInAnyVehicle(ped, false) then
+                DisableControlAction(0, 24, true)   -- Attack (tir)
+                DisableControlAction(0, 25, true)   -- Aim (viser)
+                DisableControlAction(0, 69, true)   -- Vehicle Attack
+                DisableControlAction(0, 70, true)   -- Vehicle Attack 2
+                DisableControlAction(0, 92, true)   -- Vehicle Passenger Attack
+                DisableControlAction(0, 114, true)  -- Driveby (tir depuis fenêtre)
+                DisableControlAction(0, 331, true)  -- Vehicle Melee Attack
+                DisableControlAction(1, 140, true)  -- Melee Attack Light
+                DisableControlAction(1, 141, true)  -- Melee Attack Heavy
+                DisableControlAction(1, 142, true)  -- Melee Attack Alternate
+            end
+        end
+        
+        vehicleShootBlockThread = nil
+        Config.InfoPrint('[VEHICLE] 🚫 Thread blocage tirs arrêté')
+    end)
+end
+
+local function StopVehicleShootBlockThread()
+    if vehicleShootBlockThread then
+        vehicleShootBlockThread = nil
+        Config.InfoPrint('[VEHICLE] 🚫 Thread blocage tirs réinitialisé')
+    end
 end
 
 -- ═══════════════════════════════════════════════════════════════
@@ -603,7 +646,7 @@ local function StartCoursePoursuiteGame(data)
     if inGame then return end
     
     Config.InfoPrint('═══════════════════════════════════════════════════════════════')
-    Config.InfoPrint('DÉMARRAGE COURSE POURSUITE V3.9 ULTIMATE')
+    Config.InfoPrint('DÉMARRAGE COURSE POURSUITE V3.9.10')
     Config.InfoPrint('═══════════════════════════════════════════════════════════════')
     
     local success, err = pcall(function()
@@ -618,12 +661,8 @@ local function StartCoursePoursuiteGame(data)
         Config.InfoPrint('Mon rôle: ' .. string.upper(myRole))
         Config.InfoPrint('Adversaire: ' .. opponentId)
         
-        -- ✅ V3.9: Désactiver gf_respawn si présent pour éviter les conflits
-        if GetResourceState('gf_respawn') == 'started' then
-            ExecuteCommand('stop gf_respawn')
-            Config.InfoPrint('[GF_RESPAWN] Script désactivé pendant la course')
-            Wait(500)
-        end
+        -- ✅ V3.9.10: SUPPRESSION désactivation gf_respawn (lignes retirées)
+        -- Plus aucune interférence avec les scripts de respawn du serveur
         
         local spawnCoords = data.spawnCoords
         local vehicleModel = data.vehicleModel or Config.CoursePoursuit.VehicleModel
@@ -729,7 +768,8 @@ local function StartCoursePoursuiteGame(data)
         StartBlockExitThread()
         StartVehicleExitDetectionThread()
         StartZonePresenceCheckThread()
-        StartDeathInVehicleMonitor()  -- ✅ V3.8: Surveiller mort dans véhicule
+        StartDeathInVehicleMonitor()
+        StartVehicleShootBlockThread()  -- ✅ V3.9.10: Démarrer blocage tirs véhicule
         
         Config.SuccessPrint('PARTIE DÉMARRÉE!')
     end)
@@ -764,7 +804,7 @@ local function StopCoursePoursuiteGame(showVictory)
     if not inGame then return end
     
     Config.InfoPrint('═══════════════════════════════════════════════════════════════')
-    Config.InfoPrint('ARRÊT COURSE POURSUITE V3.9 ULTIMATE')
+    Config.InfoPrint('ARRÊT COURSE POURSUITE V3.9.10')
     Config.InfoPrint('═══════════════════════════════════════════════════════════════')
     
     inGame = false
@@ -775,6 +815,7 @@ local function StopCoursePoursuiteGame(showVictory)
     vehicleExitThread = nil
     damageZoneThread = nil
     zoneWaitingThread = nil
+    StopVehicleShootBlockThread()  -- ✅ V3.9.10: Arrêter blocage tirs
     gameEndTime = nil
     gameStartTime = nil
     canExitVehicle = false
@@ -930,7 +971,7 @@ if Config.Debug then
     end, false)
 end
 
-Config.DebugPrint('client/course_poursuite.lua V3.9 ULTIMATE chargé')
+Config.DebugPrint('client/course_poursuite.lua V3.9.10 chargé')
 
 -- ═══════════════════════════════════════════════════════════════
 -- ÉVÉNEMENTS ROUNDS
@@ -982,9 +1023,9 @@ RegisterNetEvent('scharman:client:showMatchEnd', function(data)
         data = matchEndData
     })
     
-    -- ✅ NOUVEAU V3.7: Timer automatique pour masquer l'écran après 8 secondes
+    -- ✅ V3.9.10: Timer réduit à 3 secondes (au lieu de 8)
     CreateThread(function()
-        Wait(8000)
+        Wait(3000)
         SendNUIMessage({ action = 'hideMatchEnd' })
         Config.InfoPrint('[MATCH END] Écran masqué automatiquement')
     end)

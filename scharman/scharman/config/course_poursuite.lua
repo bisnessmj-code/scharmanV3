@@ -32,13 +32,13 @@ Config.CoursePoursuit.ReturnToNormalCoords = vector4(-2660.294434, -765.257142, 
 Config.CoursePoursuit.EnableRounds = true
 Config.CoursePoursuit.MaxRounds = 3
 Config.CoursePoursuit.RoundsToWin = 2
-Config.CoursePoursuit.TimeBetweenRounds = 7000
+Config.CoursePoursuit.TimeBetweenRounds = 3000  -- ✅ V3.9.10: Réduit de 7000 à 3000 (3 secondes)
 Config.CoursePoursuit.ShowRoundScoreboard = true
 Config.CoursePoursuit.RoundRespawnDelay = 3000
 
 Config.CoursePoursuit.PlayerHealth = 200
 
-Config.CoursePoursuit.VehicleModel = 'sultan'
+Config.CoursePoursuit.VehicleModel = 'Kuruma2'
 Config.CoursePoursuit.VehicleList = {
     'sultan', 'futo', 'elegy2', 'jester', 'massacro'
 }

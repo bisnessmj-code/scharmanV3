@@ -26,7 +26,7 @@ function debugLog(message, type = 'info') {
         error: 'color: #ff006e; font-weight: bold;',
         success: 'color: #00ff88; font-weight: bold;'
     };
-    console.log(`%c[Scharman NUI V3.5] ${message}`, styles[type] || styles.info);
+    console.log(`%c[Scharman NUI V3.9.10] ${message}`, styles[type] || styles.info);
 }
 
 function post(action, data = {}) {
@@ -286,7 +286,7 @@ window.addEventListener('message', (event) => {
 
 function init() {
     debugLog('═══════════════════════════════════════════════════════════════', 'info');
-    debugLog('Init Scharman NUI V3.5 FINALE...', 'info');
+    debugLog('Init Scharman NUI V3.9.10...', 'info');
     debugLog('═══════════════════════════════════════════════════════════════', 'info');
     
     Elements.app = document.getElementById('app');
@@ -308,10 +308,11 @@ function init() {
     Elements.app.classList.add('hidden');
     
     debugLog('═══════════════════════════════════════════════════════════════', 'info');
-    debugLog('Scharman NUI V3.5 initialisé!', 'success');
+    debugLog('Scharman NUI V3.9.10 initialisé!', 'success');
     debugLog('- Système CHASSEUR vs CIBLE: OK', 'success');
     debugLog('- Zone synchronisée: OK', 'success');
     debugLog('- Décompte centré et freeze: OK', 'success');
+    debugLog('- Blocage tirs en véhicule: OK', 'success');
     debugLog('═══════════════════════════════════════════════════════════════', 'info');
 }
 
@@ -413,4 +414,3 @@ function hideMatchEnd() {
         container.classList.add('hidden');
     }
 }
-

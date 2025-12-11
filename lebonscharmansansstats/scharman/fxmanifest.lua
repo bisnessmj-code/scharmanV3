@@ -4,31 +4,27 @@ fx_version 'cerulean'
 game 'gta5'
 
 author 'Scharman Dev Team'
-description 'Script PVP 1v1 Scharman - V4.0.0 SYSTÈME DE TIMERS & STATS'
+description 'Script PVP 1v1 Scharman - V4.0.0 SYSTÈME DE TIMERS'
 version '4.0.0'
 lua54 'yes'
 
 shared_scripts {
     '@es_extended/imports.lua',
     'config/config.lua',
-    'config/course_poursuite.lua',
-    'config/stats.lua' -- ✅ NOUVEAU
+    'config/course_poursuite.lua'
 }
 
 client_scripts {
     'client/main.lua',
     'client/ped.lua',
     'client/nui.lua',
-    'client/course_poursuite.lua',
-    'client/stats.lua' -- ✅ NOUVEAU
+    'client/course_poursuite.lua'
 }
 
 server_scripts {
-    '@oxmysql/lib/MySQL.lua', -- ✅ NOUVEAU (requis pour les stats)
     'server/main.lua',
     'server/version.lua',
-    'server/course_poursuite.lua',
-    'server/stats.lua' -- ✅ NOUVEAU
+    'server/course_poursuite.lua'
 }
 
 ui_page 'html/index.html'

@@ -40,22 +40,6 @@ RegisterNUICallback('joinCoursePoursuit', function(data, cb)
     cb('ok')
 end)
 
-RegisterNUICallback('openStats', function(data, cb)
-    if Config.Stats and Config.Stats.Enabled then
-        TriggerEvent('scharman:client:openStatsInterface')
-    else
-        Config.ErrorPrint('[STATS] Système désactivé')
-    end
-    cb('ok')
-end)
-
-RegisterNUICallback('closeStats', function(data, cb)
-    SendNUIMessage({
-        action = 'closeStats'
-    })
-    cb('ok')
-end)
-
 CreateThread(function()
     while true do
         Wait(0)

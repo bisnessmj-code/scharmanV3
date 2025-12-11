@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   SCHARMAN V4.0 - SCRIPT NUI AVEC SYSTÈME DE STATS
+   SCHARMAN V4.0 - SCRIPT NUI
    JavaScript optimisé et professionnel
    ═══════════════════════════════════════════════════════════════ */
 
@@ -14,11 +14,7 @@ const AppState = {
     timerInterval: null,
     timerDuration: 0,
     timerTimeLeft: 0,
-    timerRole: '',
-    statsOpen: false,
-    myStats: null,
-    leaderboard: null,
-    currentTab: 'myStats' // 'myStats' ou 'leaderboard'
+    timerRole: ''
 };
 
 const Elements = {
@@ -37,13 +33,7 @@ const Elements = {
     timerContent: null,
     timerIcon: null,
     timerTitle: null,
-    timerMessage: null,
-    statsContainer: null,
-    statsCloseBtn: null,
-    myStatsTab: null,
-    leaderboardTab: null,
-    myStatsContent: null,
-    leaderboardContent: null
+    timerMessage: null
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -71,10 +61,6 @@ function post(action, data = {}) {
     }).catch(error => {
         debugLog(`Callback ${action} FAIL: ${error}`, 'error');
     });
-}
-
-function formatNumber(num) {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -163,169 +149,10 @@ function handleCardClick(cardElement, index) {
         case 'course':
             startCoursePoursuiteMode();
             break;
-        case 'stats':
-            openStats();
-            break;
         default:
             showNotification('❌ Mode non reconnu', 2000, 'error');
             break;
     }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   INTERFACE STATISTIQUES
-   ═══════════════════════════════════════════════════════════════ */
-
-function openStats() {
-    debugLog('Opening stats interface...', 'info');
-    closeInterface();
-    
-    setTimeout(() => {
-        post('openStats', {});
-    }, 400);
-}
-
-function displayStats(data) {
-    if (!data) {
-        debugLog('No stats data received', 'error');
-        return;
-    }
-    
-    AppState.statsOpen = true;
-    AppState.myStats = data.myStats;
-    AppState.leaderboard = data.leaderboard;
-    
-    if (Elements.statsContainer) {
-        Elements.statsContainer.classList.remove('hidden');
-    }
-    
-    // Afficher l'onglet "Mes Stats" par défaut
-    showMyStats();
-    
-    debugLog('Stats interface displayed', 'success');
-}
-
-function closeStats() {
-    debugLog('Closing stats interface...', 'info');
-    
-    AppState.statsOpen = false;
-    
-    if (Elements.statsContainer) {
-        Elements.statsContainer.classList.add('hidden');
-    }
-    
-    post('closeStats');
-}
-
-function showMyStats() {
-    AppState.currentTab = 'myStats';
-    
-    if (Elements.myStatsTab) Elements.myStatsTab.classList.add('active');
-    if (Elements.leaderboardTab) Elements.leaderboardTab.classList.remove('active');
-    
-    if (Elements.myStatsContent) Elements.myStatsContent.classList.remove('hidden');
-    if (Elements.leaderboardContent) Elements.leaderboardContent.classList.add('hidden');
-    
-    // Remplir les stats personnelles
-    if (AppState.myStats) {
-        updateMyStatsDisplay(AppState.myStats);
-    }
-}
-
-function showLeaderboard() {
-    AppState.currentTab = 'leaderboard';
-    
-    if (Elements.myStatsTab) Elements.myStatsTab.classList.remove('active');
-    if (Elements.leaderboardTab) Elements.leaderboardTab.classList.add('active');
-    
-    if (Elements.myStatsContent) Elements.myStatsContent.classList.add('hidden');
-    if (Elements.leaderboardContent) Elements.leaderboardContent.classList.remove('hidden');
-    
-    // Remplir le leaderboard
-    if (AppState.leaderboard) {
-        updateLeaderboardDisplay(AppState.leaderboard);
-    }
-}
-
-function updateMyStatsDisplay(stats) {
-    // Mise à jour des stats personnelles dans le DOM
-    const killsEl = document.getElementById('my-kills');
-    const deathsEl = document.getElementById('my-deaths');
-    const ratioEl = document.getElementById('my-ratio');
-    const winsEl = document.getElementById('my-wins');
-    const lossesEl = document.getElementById('my-losses');
-    const eloEl = document.getElementById('my-elo');
-    const rankEl = document.getElementById('my-rank');
-    const rankIconEl = document.getElementById('my-rank-icon');
-    
-    if (killsEl) killsEl.textContent = formatNumber(stats.kills);
-    if (deathsEl) deathsEl.textContent = formatNumber(stats.deaths);
-    if (ratioEl) ratioEl.textContent = stats.ratio.toFixed(2);
-    if (winsEl) winsEl.textContent = formatNumber(stats.wins);
-    if (lossesEl) lossesEl.textContent = formatNumber(stats.losses);
-    if (eloEl) eloEl.textContent = formatNumber(stats.elo);
-    if (rankEl) rankEl.textContent = stats.rank;
-    if (rankIconEl) rankIconEl.textContent = stats.rankData.icon;
-    
-    // Couleur du rang
-    if (rankEl && stats.rankData) {
-        rankEl.style.color = `rgb(${stats.rankData.color.r}, ${stats.rankData.color.g}, ${stats.rankData.color.b})`;
-    }
-    
-    debugLog('My stats updated', 'success');
-}
-
-function updateLeaderboardDisplay(leaderboard) {
-    const leaderboardBody = document.getElementById('leaderboard-body');
-    
-    if (!leaderboardBody) {
-        debugLog('Leaderboard body not found', 'error');
-        return;
-    }
-    
-    leaderboardBody.innerHTML = '';
-    
-    if (!leaderboard || leaderboard.length === 0) {
-        leaderboardBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">Aucune donnée disponible</td></tr>';
-        return;
-    }
-    
-    leaderboard.forEach(player => {
-        const row = document.createElement('tr');
-        
-        // Position
-        let positionClass = '';
-        if (player.position === 1) positionClass = 'first';
-        else if (player.position === 2) positionClass = 'second';
-        else if (player.position === 3) positionClass = 'third';
-        
-        row.innerHTML = `
-            <td class="position ${positionClass}">#${player.position}</td>
-            <td class="player-name">${escapeHtml(player.name)}</td>
-            <td>${formatNumber(player.kills)}</td>
-            <td>${formatNumber(player.deaths)}</td>
-            <td>${player.ratio.toFixed(2)}</td>
-            <td class="elo">${formatNumber(player.elo)}</td>
-            <td class="rank" style="color: rgb(${player.rankData.color.r}, ${player.rankData.color.g}, ${player.rankData.color.b})">
-                ${player.rankData.icon} ${player.rank}
-            </td>
-        `;
-        
-        leaderboardBody.appendChild(row);
-    });
-    
-    debugLog('Leaderboard updated with ' + leaderboard.length + ' players', 'success');
-}
-
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -623,31 +450,11 @@ function initEventListeners() {
         });
     }
     
-    // Stats close button
-    if (Elements.statsCloseBtn) {
-        Elements.statsCloseBtn.addEventListener('click', () => {
-            debugLog('Stats close button clicked', 'info');
-            closeStats();
-        });
-    }
-    
-    // Tabs
-    if (Elements.myStatsTab) {
-        Elements.myStatsTab.addEventListener('click', () => showMyStats());
-    }
-    
-    if (Elements.leaderboardTab) {
-        Elements.leaderboardTab.addEventListener('click', () => showLeaderboard());
-    }
-    
     // Escape key
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            if (AppState.statsOpen) {
-                closeStats();
-            } else if (AppState.isOpen) {
-                closeInterface();
-            }
+        if (event.key === 'Escape' && AppState.isOpen) {
+            debugLog('ESC pressed', 'info');
+            closeInterface();
         }
     });
     
@@ -737,18 +544,6 @@ window.addEventListener('message', (event) => {
         case 'hideMatchEnd':
             hideMatchEnd();
             break;
-        case 'openStats':
-            displayStats(data.data);
-            break;
-        case 'closeStats':
-            closeStats();
-            break;
-        case 'updateMyStats':
-            updateMyStatsDisplay(data.data);
-            break;
-        case 'updateLeaderboard':
-            updateLeaderboardDisplay(data.data);
-            break;
     }
 });
 
@@ -774,12 +569,6 @@ function init() {
     Elements.timerContainer = document.getElementById('timer-container');
     Elements.timerValue = document.getElementById('timer-value');
     Elements.timerProgressFill = document.getElementById('timer-progress-fill');
-    Elements.statsContainer = document.getElementById('stats-container');
-    Elements.statsCloseBtn = document.getElementById('stats-close-btn');
-    Elements.myStatsTab = document.getElementById('my-stats-tab');
-    Elements.leaderboardTab = document.getElementById('leaderboard-tab');
-    Elements.myStatsContent = document.getElementById('my-stats-content');
-    Elements.leaderboardContent = document.getElementById('leaderboard-content');
     
     // Validate required elements
     if (!Elements.app || !Elements.closeBtn || !Elements.notificationContainer) {
@@ -790,14 +579,12 @@ function init() {
     // Initialize
     initEventListeners();
     Elements.app.classList.add('hidden');
-    if (Elements.statsContainer) Elements.statsContainer.classList.add('hidden');
     
     debugLog('═══════════════════════════════════════', 'info');
     debugLog('Scharman NUI V4.0 - Ready!', 'success');
     debugLog('- Timer system: OK', 'success');
     debugLog('- Countdown: OK', 'success');
     debugLog('- Scoreboard: OK', 'success');
-    debugLog('- Stats system: OK', 'success');
     debugLog('═══════════════════════════════════════', 'info');
 }
 

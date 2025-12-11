@@ -83,11 +83,11 @@
                         <button class="btn-primary">JOUER</button>
                     </div>
                     
-                    <div class="game-card" data-mode="stats">
+                    <div class="game-card">
                         <div class="card-icon">📊</div>
                         <h3 class="card-title">CLASSEMENT</h3>
                         <p class="card-description">Statistiques et rang</p>
-                        <button class="btn-primary">VOIR</button>
+                        <button class="btn-primary" disabled>BIENTÔT</button>
                     </div>
                 </div>
                 
@@ -110,115 +110,6 @@
             </div>
             
             <div class="tablet-footer">
-                <div class="footer-text">Appuyez sur <span class="key-highlight">ESC</span> pour fermer</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Interface Statistiques -->
-    <div id="stats-container" class="stats-container hidden">
-        <div class="stats-panel">
-            <div class="stats-header">
-                <div class="logo-container">
-                    <div class="logo-icon">⚡</div>
-                    <span class="logo-text">SCHARMAN</span>
-                </div>
-                <h1 class="stats-title">📊 STATISTIQUES</h1>
-                <button class="btn-close" id="stats-close-btn">×</button>
-            </div>
-            
-            <div class="stats-tabs">
-                <button class="stats-tab active" id="my-stats-tab">
-                    <span class="tab-icon">👤</span>
-                    <span>Mes Stats</span>
-                </button>
-                <button class="stats-tab" id="leaderboard-tab">
-                    <span class="tab-icon">🏆</span>
-                    <span>Classement</span>
-                </button>
-            </div>
-            
-            <!-- Mes Stats -->
-            <div id="my-stats-content" class="stats-content">
-                <div class="rank-display">
-                    <div class="rank-icon" id="my-rank-icon">🥉</div>
-                    <div class="rank-info">
-                        <div class="rank-name" id="my-rank">Bronze</div>
-                        <div class="rank-elo">
-                            <span class="elo-value" id="my-elo">1000</span>
-                            <span class="elo-label">ELO</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stats-grid">
-                    <div class="stat-card kills">
-                        <div class="stat-icon">🎯</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="my-kills">0</div>
-                            <div class="stat-label">Kills</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card deaths">
-                        <div class="stat-icon">💀</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="my-deaths">0</div>
-                            <div class="stat-label">Morts</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card ratio">
-                        <div class="stat-icon">📈</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="my-ratio">0.00</div>
-                            <div class="stat-label">Ratio K/D</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card wins">
-                        <div class="stat-icon">🏆</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="my-wins">0</div>
-                            <div class="stat-label">Victoires</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card losses">
-                        <div class="stat-icon">❌</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="my-losses">0</div>
-                            <div class="stat-label">Défaites</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Leaderboard -->
-            <div id="leaderboard-content" class="stats-content hidden">
-                <div class="leaderboard-table-container">
-                    <table class="leaderboard-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Joueur</th>
-                                <th>Kills</th>
-                                <th>Morts</th>
-                                <th>K/D</th>
-                                <th>ELO</th>
-                                <th>Rang</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leaderboard-body">
-                            <tr>
-                                <td colspan="7" style="text-align: center; padding: 20px;">Chargement...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <div class="stats-footer">
                 <div class="footer-text">Appuyez sur <span class="key-highlight">ESC</span> pour fermer</div>
             </div>
         </div>

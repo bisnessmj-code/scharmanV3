@@ -470,7 +470,6 @@ local function EndMatch(instance, winnerId)
     
     Config.InfoPrint('[MATCH] Match terminé - Gagnant final: ' .. winnerId)
     
-    
     TriggerClientEvent('scharman:client:showMatchEnd', chasseurId, {
         winner = (winnerId == chasseurId) and 'me' or 'opponent',
         finalScore = instance.score,
@@ -482,11 +481,6 @@ local function EndMatch(instance, winnerId)
         finalScore = instance.score,
         isPlayerA = (cibleId == instance.playerAId)
     })
-    
-    if Config.Stats and Config.Stats.Enabled then
-        local loserId = (winnerId == chasseurId) and cibleId or chasseurId
-        TriggerEvent('scharman:server:recordMatchResult', winnerId, loserId)
-    end
     
     Wait(3000)
     
@@ -673,11 +667,6 @@ RegisterNetEvent('scharman:server:playerDied', function(instanceId)
     local winnerId = playerData.opponentId
     local winnerRole = (loserRole == 'chasseur') and 'cible' or 'chasseur'
     
-    -- ✅ NOUVEAU: Enregistrer les stats (kill/mort)
-    if Config.Stats and Config.Stats.Enabled then
-        TriggerEvent('scharman:server:recordKill', winnerId, loserId)
-    end
-    
     if winnerId == instance.playerAId then
         instance.score.playerA = instance.score.playerA + 1
         Config.InfoPrint('[SCORE] Joueur A gagne! Score: ' .. instance.score.playerA .. '-' .. instance.score.playerB)
@@ -686,6 +675,7 @@ RegisterNetEvent('scharman:server:playerDied', function(instanceId)
         Config.InfoPrint('[SCORE] Joueur B gagne! Score: ' .. instance.score.playerA .. '-' .. instance.score.playerB)
     end
     
+    -- Utiliser la nouvelle fonction HandleRoundEnd
     HandleRoundEnd(instance, winnerId)
 end)
 

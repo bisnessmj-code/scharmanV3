@@ -32,9 +32,9 @@ Config.CoursePoursuit.ReturnToNormalCoords = vector4(-2660.294434, -765.257142, 
 Config.CoursePoursuit.EnableRounds = true
 Config.CoursePoursuit.MaxRounds = 3
 Config.CoursePoursuit.RoundsToWin = 2
-Config.CoursePoursuit.TimeBetweenRounds = 3000
+Config.CoursePoursuit.TimeBetweenRounds = 2000
 Config.CoursePoursuit.ShowRoundScoreboard = true
-Config.CoursePoursuit.RoundRespawnDelay = 3000
+Config.CoursePoursuit.RoundRespawnDelay = 2000
 
 Config.CoursePoursuit.PlayerHealth = 200
 Config.CoursePoursuit.PlayerArmor = 100  -- ✅ NOUVEAU: Armor au début de chaque round
@@ -43,7 +43,7 @@ Config.CoursePoursuit.PlayerArmor = 100  -- ✅ NOUVEAU: Armor au début de chaq
 Config.CoursePoursuit.ChasseurZoneTimer = 60  -- 60 secondes (1 minute) pour créer la zone
 Config.CoursePoursuit.CibleZoneTimer = 60     -- 60 secondes (1 minute) pour rejoindre la zone
 
-Config.CoursePoursuit.VehicleModel = 'Kuruma2'
+Config.CoursePoursuit.VehicleModel = 'strcoupe'
 Config.CoursePoursuit.VehicleList = {
     'sultan', 'futo', 'elegy2', 'jester', 'massacro'
 }

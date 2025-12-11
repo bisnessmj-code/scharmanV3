@@ -1,10 +1,20 @@
+/* ═══════════════════════════════════════════════════════════════
+   SCHARMAN V4.0 - SCRIPT NUI
+   JavaScript optimisé et professionnel
+   ═══════════════════════════════════════════════════════════════ */
+
 const AppState = {
     isOpen: false,
     isAnimating: false,
     debugMode: false,
     countdownActive: false,
     vehicleLockActive: false,
-    vehicleLockTimer: null
+    vehicleLockTimer: null,
+    timerActive: false,
+    timerInterval: null,
+    timerDuration: 0,
+    timerTimeLeft: 0,
+    timerRole: ''
 };
 
 const Elements = {
@@ -16,17 +26,29 @@ const Elements = {
     countdownNumber: null,
     vehicleLockContainer: null,
     vehicleLockTimer: null,
-    vehicleLockProgress: null
+    vehicleLockProgress: null,
+    timerContainer: null,
+    timerValue: null,
+    timerProgressFill: null,
+    timerContent: null,
+    timerIcon: null,
+    timerTitle: null,
+    timerMessage: null
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITAIRES
+   ═══════════════════════════════════════════════════════════════ */
 
 function debugLog(message, type = 'info') {
     if (!AppState.debugMode) return;
     const styles = {
-        info: 'color: #00d4ff; font-weight: bold;',
-        error: 'color: #ff006e; font-weight: bold;',
-        success: 'color: #00ff88; font-weight: bold;'
+        info: 'color: #00fff7; font-weight: bold;',
+        error: 'color: #ff0055; font-weight: bold;',
+        success: 'color: #00ff88; font-weight: bold;',
+        warning: 'color: #ff6b00; font-weight: bold;'
     };
-    console.log(`%c[Scharman NUI V3.9.10] ${message}`, styles[type] || styles.info);
+    console.log(`%c[Scharman V4] ${message}`, styles[type] || styles.info);
 }
 
 function post(action, data = {}) {
@@ -34,12 +56,16 @@ function post(action, data = {}) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
-    }).then(resp => resp.json()).then(resp => {
-        debugLog(`✓ Callback ${action} réussi`, 'success');
+    }).then(resp => resp.json()).then(() => {
+        debugLog(`Callback ${action} OK`, 'success');
     }).catch(error => {
-        debugLog(`✗ Callback ${action} échoué: ${error}`, 'error');
+        debugLog(`Callback ${action} FAIL: ${error}`, 'error');
     });
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   NOTIFICATIONS
+   ═══════════════════════════════════════════════════════════════ */
 
 function showNotification(message, duration = 3000, type = 'info') {
     const notification = document.createElement('div');
@@ -47,7 +73,7 @@ function showNotification(message, duration = 3000, type = 'info') {
     notification.textContent = message;
     Elements.notificationContainer.appendChild(notification);
     
-    debugLog(`Notification: ${message} (${type})`, type === 'error' ? 'error' : 'info');
+    debugLog(`Notif: ${message}`, type === 'error' ? 'error' : 'info');
     
     setTimeout(() => {
         notification.classList.add('closing');
@@ -55,54 +81,67 @@ function showNotification(message, duration = 3000, type = 'info') {
             if (notification.parentElement) {
                 notification.parentElement.removeChild(notification);
             }
-        }, 300);
+        }, 200);
     }, duration);
 }
 
-function openInterface(animationDuration = 500) {
+/* ═══════════════════════════════════════════════════════════════
+   INTERFACE PRINCIPALE
+   ═══════════════════════════════════════════════════════════════ */
+
+function openInterface(animationDuration = 400) {
     if (AppState.isOpen || AppState.isAnimating) return;
-    debugLog('Ouverture interface...', 'info');
+    debugLog('Opening interface...', 'info');
+    
     AppState.isAnimating = true;
     Elements.app.classList.remove('hidden');
+    
     setTimeout(() => {
         AppState.isOpen = true;
         AppState.isAnimating = false;
-        debugLog('Interface ouverte', 'success');
+        debugLog('Interface opened', 'success');
     }, animationDuration);
 }
 
-function closeInterface(animationDuration = 400) {
+function closeInterface(animationDuration = 300) {
     if (!AppState.isOpen || AppState.isAnimating) return;
-    debugLog('Fermeture interface...', 'info');
+    debugLog('Closing interface...', 'info');
+    
     AppState.isAnimating = true;
-    Elements.app.classList.add('closing');
+    const tablet = Elements.app.querySelector('.tablet');
+    if (tablet) tablet.classList.add('closing');
+    
     setTimeout(() => {
-        Elements.app.classList.remove('closing');
+        if (tablet) tablet.classList.remove('closing');
         Elements.app.classList.add('hidden');
         AppState.isOpen = false;
         AppState.isAnimating = false;
-        debugLog('Interface fermée', 'success');
+        debugLog('Interface closed', 'success');
         post('close');
     }, animationDuration);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   MATCHMAKING
+   ═══════════════════════════════════════════════════════════════ */
+
 function startCoursePoursuiteMode() {
-    debugLog('Lancement matchmaking Course Poursuite', 'info');
+    debugLog('Starting matchmaking...', 'info');
     showNotification('🔍 Recherche adversaire...', 2000, 'info');
     closeInterface();
     setTimeout(() => {
         post('joinCoursePoursuit', {});
-    }, 500);
+    }, 400);
 }
 
 function handleCardClick(cardElement, index) {
-    debugLog(`Clic carte ${index}`, 'info');
+    debugLog(`Card ${index} clicked`, 'info');
+    
     const gameMode = cardElement.getAttribute('data-mode');
     const button = cardElement.querySelector('.btn-primary');
     
     if (button && button.disabled) {
-        debugLog('Mode désactivé', 'warning');
-        showNotification('❌ Mode pas encore disponible', 2000, 'warning');
+        showNotification('❌ Mode non disponible', 2000, 'warning');
         return;
     }
     
@@ -111,14 +150,17 @@ function handleCardClick(cardElement, index) {
             startCoursePoursuiteMode();
             break;
         default:
-            debugLog('Mode inconnu: ' + gameMode, 'warning');
             showNotification('❌ Mode non reconnu', 2000, 'error');
             break;
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   COUNTDOWN - 3 2 1 GO
+   ═══════════════════════════════════════════════════════════════ */
+
 function showCountdown(number) {
-    debugLog(`Affichage décompte: ${number}`, 'info');
+    debugLog(`Countdown: ${number}`, 'info');
     
     AppState.countdownActive = true;
     Elements.countdownContainer.classList.remove('hidden');
@@ -130,20 +172,25 @@ function showCountdown(number) {
         Elements.countdownNumber.classList.remove('go');
     }
     
+    // Reset animation
     Elements.countdownNumber.style.animation = 'none';
     void Elements.countdownNumber.offsetWidth;
     Elements.countdownNumber.style.animation = '';
 }
 
 function hideCountdown() {
-    debugLog('Masquage décompte', 'info');
+    debugLog('Hiding countdown', 'info');
     AppState.countdownActive = false;
     Elements.countdownContainer.classList.add('hidden');
     Elements.countdownNumber.classList.remove('go');
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   VEHICLE LOCK
+   ═══════════════════════════════════════════════════════════════ */
+
 function showVehicleLock(duration = 30000) {
-    debugLog(`Affichage blocage véhicule (${duration}ms)`, 'info');
+    debugLog(`Vehicle lock: ${duration}ms`, 'info');
     
     AppState.vehicleLockActive = true;
     Elements.vehicleLockContainer.classList.remove('hidden');
@@ -153,6 +200,10 @@ function showVehicleLock(duration = 30000) {
     Elements.vehicleLockTimer.textContent = `${timeLeft}s`;
     
     const startTime = Date.now();
+    
+    if (AppState.vehicleLockTimer) {
+        clearInterval(AppState.vehicleLockTimer);
+    }
     
     AppState.vehicleLockTimer = setInterval(() => {
         const elapsed = Date.now() - startTime;
@@ -170,7 +221,7 @@ function showVehicleLock(duration = 30000) {
 }
 
 function hideVehicleLock() {
-    debugLog('Masquage blocage véhicule', 'info');
+    debugLog('Hiding vehicle lock', 'info');
     
     if (AppState.vehicleLockTimer) {
         clearInterval(AppState.vehicleLockTimer);
@@ -181,41 +232,239 @@ function hideVehicleLock() {
     Elements.vehicleLockContainer.classList.add('hidden');
 }
 
-function showDeathScreen() {
-    debugLog('Affichage écran mort', 'error');
-    const deathScreen = document.getElementById('death-screen-container');
-    if (deathScreen) {
-        deathScreen.classList.remove('hidden');
+/* ═══════════════════════════════════════════════════════════════
+   TIMER CHASSEUR/CIBLE
+   ═══════════════════════════════════════════════════════════════ */
+
+function showTimer(data) {
+    debugLog(`Timer ${data.role}: ${data.duration}s`, 'info');
+    
+    AppState.timerActive = true;
+    AppState.timerDuration = data.duration;
+    AppState.timerTimeLeft = data.duration;
+    AppState.timerRole = data.role;
+    
+    const container = Elements.timerContainer;
+    const content = container.querySelector('.timer-content');
+    const icon = container.querySelector('.timer-icon');
+    const title = container.querySelector('.timer-title');
+    const message = container.querySelector('.timer-message');
+    
+    // Configuration selon le rôle
+    content.classList.remove('chasseur', 'cible');
+    
+    if (data.role === 'chasseur') {
+        content.classList.add('chasseur');
+        icon.textContent = '🔫';
+        title.textContent = 'TIMER CHASSEUR';
+    } else {
+        content.classList.add('cible');
+        icon.textContent = '🎯';
+        title.textContent = 'TIMER CIBLE';
     }
+    
+    message.textContent = data.message || 'Temps restant...';
+    Elements.timerValue.textContent = AppState.timerTimeLeft + 's';
+    Elements.timerProgressFill.style.width = '100%';
+    Elements.timerValue.classList.remove('warning', 'critical');
+    
+    container.classList.remove('hidden');
+    
+    // Démarrer le compte à rebours
+    if (AppState.timerInterval) {
+        clearInterval(AppState.timerInterval);
+    }
+    
+    AppState.timerInterval = setInterval(() => {
+        AppState.timerTimeLeft--;
+        
+        if (AppState.timerTimeLeft <= 0) {
+            hideTimer();
+            return;
+        }
+        
+        Elements.timerValue.textContent = AppState.timerTimeLeft + 's';
+        
+        const progress = (AppState.timerTimeLeft / AppState.timerDuration) * 100;
+        Elements.timerProgressFill.style.width = progress + '%';
+        
+        // Changement de couleur
+        Elements.timerValue.classList.remove('warning', 'critical');
+        if (AppState.timerTimeLeft <= 10) {
+            Elements.timerValue.classList.add('critical');
+        } else if (AppState.timerTimeLeft <= 30) {
+            Elements.timerValue.classList.add('warning');
+        }
+    }, 1000);
+}
+
+function updateTimer(data) {
+    if (!AppState.timerActive) return;
+    
+    AppState.timerTimeLeft = data.timeLeft;
+    Elements.timerValue.textContent = AppState.timerTimeLeft + 's';
+    
+    const progress = (AppState.timerTimeLeft / AppState.timerDuration) * 100;
+    Elements.timerProgressFill.style.width = progress + '%';
+    
+    Elements.timerValue.classList.remove('warning', 'critical');
+    if (AppState.timerTimeLeft <= 10) {
+        Elements.timerValue.classList.add('critical');
+    } else if (AppState.timerTimeLeft <= 30) {
+        Elements.timerValue.classList.add('warning');
+    }
+}
+
+function hideTimer() {
+    debugLog('Hiding timer', 'info');
+    
+    if (AppState.timerInterval) {
+        clearInterval(AppState.timerInterval);
+        AppState.timerInterval = null;
+    }
+    
+    AppState.timerActive = false;
+    Elements.timerContainer.classList.add('hidden');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ÉCRANS DE FIN
+   ═══════════════════════════════════════════════════════════════ */
+
+function showDeathScreen() {
+    debugLog('Showing death screen', 'error');
+    const container = document.getElementById('death-screen-container');
+    if (container) container.classList.remove('hidden');
 }
 
 function hideDeathScreen() {
-    debugLog('Masquage écran mort');
-    const deathScreen = document.getElementById('death-screen-container');
-    if (deathScreen) {
-        deathScreen.classList.add('hidden');
-    }
+    debugLog('Hiding death screen', 'info');
+    const container = document.getElementById('death-screen-container');
+    if (container) container.classList.add('hidden');
 }
 
+function showVictoryScreen() {
+    debugLog('Showing victory screen', 'success');
+    const container = document.getElementById('victory-screen-container');
+    if (container) container.classList.remove('hidden');
+}
+
+function hideVictoryScreen() {
+    debugLog('Hiding victory screen', 'info');
+    const container = document.getElementById('victory-screen-container');
+    if (container) container.classList.add('hidden');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCOREBOARD
+   ═══════════════════════════════════════════════════════════════ */
+
+function showRoundScoreboard(data) {
+    debugLog(`Scoreboard: Round ${data.round}`, 'info');
+    
+    const container = document.getElementById('round-scoreboard-container');
+    const roundNumber = document.getElementById('round-number');
+    const scoreChasseur = document.getElementById('score-chasseur');
+    const scoreCible = document.getElementById('score-cible');
+    const nextRoundNumber = document.getElementById('next-round-number');
+    const nextRoundTimer = document.getElementById('next-round-timer');
+    
+    if (!container) return;
+    
+    roundNumber.textContent = data.round;
+    scoreChasseur.textContent = data.score.chasseur;
+    scoreCible.textContent = data.score.cible;
+    nextRoundNumber.textContent = data.round + 1;
+    
+    container.classList.remove('hidden');
+    
+    // Countdown timer
+    let timeLeft = Math.floor(data.timeUntilNext / 1000);
+    nextRoundTimer.textContent = timeLeft;
+    
+    const countdown = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+            nextRoundTimer.textContent = timeLeft;
+        } else {
+            clearInterval(countdown);
+        }
+    }, 1000);
+}
+
+function hideRoundScoreboard() {
+    debugLog('Hiding scoreboard', 'info');
+    const container = document.getElementById('round-scoreboard-container');
+    if (container) container.classList.add('hidden');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MATCH END
+   ═══════════════════════════════════════════════════════════════ */
+
+function showMatchEnd(data) {
+    debugLog(`Match end: ${data.winner}`, 'success');
+    
+    const container = document.getElementById('match-end-container');
+    const title = document.getElementById('match-end-title');
+    const trophy = container.querySelector('.match-end-trophy');
+    const finalScoreChasseur = document.getElementById('final-score-chasseur');
+    const finalScoreCible = document.getElementById('final-score-cible');
+    
+    if (!container) return;
+    
+    if (data.winner === 'me') {
+        title.textContent = 'VICTOIRE !';
+        title.classList.remove('defeat');
+        trophy.textContent = '🏆';
+    } else {
+        title.textContent = 'DÉFAITE';
+        title.classList.add('defeat');
+        trophy.textContent = '💀';
+    }
+    
+    finalScoreChasseur.textContent = data.finalScore.chasseur;
+    finalScoreCible.textContent = data.finalScore.cible;
+    
+    container.classList.remove('hidden');
+}
+
+function hideMatchEnd() {
+    debugLog('Hiding match end', 'info');
+    const container = document.getElementById('match-end-container');
+    if (container) container.classList.add('hidden');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EVENT LISTENERS
+   ═══════════════════════════════════════════════════════════════ */
+
 function initEventListeners() {
-    debugLog('Init écouteurs...', 'info');
+    debugLog('Initializing event listeners...', 'info');
     
-    Elements.closeBtn.addEventListener('click', () => {
-        debugLog('Clic fermeture', 'info');
-        closeInterface();
-    });
+    // Close button
+    if (Elements.closeBtn) {
+        Elements.closeBtn.addEventListener('click', () => {
+            debugLog('Close button clicked', 'info');
+            closeInterface();
+        });
+    }
     
+    // Escape key
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && AppState.isOpen) {
-            debugLog('ESC détecté', 'info');
+            debugLog('ESC pressed', 'info');
             closeInterface();
         }
     });
     
+    // Disable right click
     document.addEventListener('contextmenu', (e) => e.preventDefault());
     
+    // Game cards
     Elements.gameCards.forEach((card, index) => {
         card.addEventListener('click', () => handleCardClick(card, index));
+        
         const button = card.querySelector('.btn-primary');
         if (button) {
             button.addEventListener('click', (e) => {
@@ -227,20 +476,25 @@ function initEventListeners() {
         }
     });
     
-    debugLog('Écouteurs initialisés', 'success');
+    debugLog('Event listeners initialized', 'success');
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MESSAGE HANDLER
+   ═══════════════════════════════════════════════════════════════ */
 
 window.addEventListener('message', (event) => {
     const data = event.data;
     if (!data || !data.action) return;
+    
     debugLog(`Message: ${data.action}`, 'info');
     
     switch (data.action) {
         case 'open':
-            openInterface(data.data?.animationDuration || 500);
+            openInterface(data.data?.animationDuration || 400);
             break;
         case 'close':
-            closeInterface(data.data?.animationDuration || 400);
+            closeInterface(data.data?.animationDuration || 300);
             break;
         case 'showNotification':
             showNotification(data.data.message, data.data.duration || 3000, data.data.type || 'info');
@@ -256,6 +510,15 @@ window.addEventListener('message', (event) => {
             break;
         case 'hideVehicleLock':
             hideVehicleLock();
+            break;
+        case 'showTimer':
+            showTimer(data.data);
+            break;
+        case 'updateTimer':
+            updateTimer(data.data);
+            break;
+        case 'hideTimer':
+            hideTimer();
             break;
         case 'showDeathScreen':
             showDeathScreen();
@@ -284,11 +547,16 @@ window.addEventListener('message', (event) => {
     }
 });
 
+/* ═══════════════════════════════════════════════════════════════
+   INITIALISATION
+   ═══════════════════════════════════════════════════════════════ */
+
 function init() {
-    debugLog('═══════════════════════════════════════════════════════════════', 'info');
-    debugLog('Init Scharman NUI V3.9.10...', 'info');
-    debugLog('═══════════════════════════════════════════════════════════════', 'info');
+    debugLog('═══════════════════════════════════════', 'info');
+    debugLog('Scharman NUI V4.0 - Initializing...', 'info');
+    debugLog('═══════════════════════════════════════', 'info');
     
+    // Cache DOM elements
     Elements.app = document.getElementById('app');
     Elements.closeBtn = document.getElementById('closeBtn');
     Elements.gameCards = Array.from(document.querySelectorAll('.game-card'));
@@ -298,255 +566,31 @@ function init() {
     Elements.vehicleLockContainer = document.getElementById('vehicle-lock-container');
     Elements.vehicleLockTimer = document.getElementById('vehicle-lock-timer');
     Elements.vehicleLockProgress = document.getElementById('vehicle-lock-progress');
+    Elements.timerContainer = document.getElementById('timer-container');
+    Elements.timerValue = document.getElementById('timer-value');
+    Elements.timerProgressFill = document.getElementById('timer-progress-fill');
     
+    // Validate required elements
     if (!Elements.app || !Elements.closeBtn || !Elements.notificationContainer) {
-        debugLog('Erreur: Éléments manquants!', 'error');
+        debugLog('ERROR: Required elements missing!', 'error');
         return;
     }
     
+    // Initialize
     initEventListeners();
     Elements.app.classList.add('hidden');
     
-    debugLog('═══════════════════════════════════════════════════════════════', 'info');
-    debugLog('Scharman NUI V3.9.10 initialisé!', 'success');
-    debugLog('- Système CHASSEUR vs CIBLE: OK', 'success');
-    debugLog('- Zone synchronisée: OK', 'success');
-    debugLog('- Décompte centré et freeze: OK', 'success');
-    debugLog('- Blocage tirs en véhicule: OK', 'success');
-    debugLog('═══════════════════════════════════════════════════════════════', 'info');
+    debugLog('═══════════════════════════════════════', 'info');
+    debugLog('Scharman NUI V4.0 - Ready!', 'success');
+    debugLog('- Timer system: OK', 'success');
+    debugLog('- Countdown: OK', 'success');
+    debugLog('- Scoreboard: OK', 'success');
+    debugLog('═══════════════════════════════════════', 'info');
 }
 
+// Start
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
 }
-
-// ═══════════════════════════════════════════════════════════════
-// SYSTÈME DE ROUNDS
-// ═══════════════════════════════════════════════════════════════
-
-function showVictoryScreen() {
-    debugLog('Affichage écran victoire', 'success');
-    const container = document.getElementById('victory-screen-container');
-    if (container) {
-        container.classList.remove('hidden');
-    }
-}
-
-function hideVictoryScreen() {
-    debugLog('Masquage écran victoire');
-    const container = document.getElementById('victory-screen-container');
-    if (container) {
-        container.classList.add('hidden');
-    }
-}
-
-function showRoundScoreboard(data) {
-    debugLog(`Affichage scoreboard: Manche ${data.round}`, 'info');
-    
-    const container = document.getElementById('round-scoreboard-container');
-    const roundNumber = document.getElementById('round-number');
-    const scoreChasseur = document.getElementById('score-chasseur');
-    const scoreCible = document.getElementById('score-cible');
-    const nextRoundNumber = document.getElementById('next-round-number');
-    const nextRoundTimer = document.getElementById('next-round-timer');
-    
-    if (container && roundNumber && scoreChasseur && scoreCible) {
-        roundNumber.textContent = data.round;
-        scoreChasseur.textContent = data.score.chasseur;
-        scoreCible.textContent = data.score.cible;
-        nextRoundNumber.textContent = data.round + 1;
-        
-        container.classList.remove('hidden');
-        
-        // Countdown timer
-        let timeLeft = Math.floor(data.timeUntilNext / 1000);
-        nextRoundTimer.textContent = timeLeft;
-        
-        const countdown = setInterval(() => {
-            timeLeft--;
-            if (timeLeft > 0) {
-                nextRoundTimer.textContent = timeLeft;
-            } else {
-                clearInterval(countdown);
-            }
-        }, 1000);
-    }
-}
-
-function hideRoundScoreboard() {
-    debugLog('Masquage scoreboard');
-    const container = document.getElementById('round-scoreboard-container');
-    if (container) {
-        container.classList.add('hidden');
-    }
-}
-
-function showMatchEnd(data) {
-    debugLog(`Affichage fin match: ${data.winner}`, 'success');
-    
-    const container = document.getElementById('match-end-container');
-    const title = document.getElementById('match-end-title');
-    const finalScoreChasseur = document.getElementById('final-score-chasseur');
-    const finalScoreCible = document.getElementById('final-score-cible');
-    
-    if (container && title && finalScoreChasseur && finalScoreCible) {
-        if (data.winner === 'me') {
-            title.textContent = '🏆 VICTOIRE DU MATCH ! 🏆';
-            title.style.color = '#ffd700';
-        } else {
-            title.textContent = '💀 DÉFAITE DU MATCH';
-            title.style.color = '#ff4444';
-        }
-        
-        finalScoreChasseur.textContent = data.finalScore.chasseur;
-        finalScoreCible.textContent = data.finalScore.cible;
-        
-        container.classList.remove('hidden');
-    }
-}
-
-function hideMatchEnd() {
-    debugLog('Masquage fin match');
-    const container = document.getElementById('match-end-container');
-    if (container) {
-        container.classList.add('hidden');
-    }
-}
-
-
-
-// ═══════════════════════════════════════════════════════════════
-// ✅ NOUVEAU V4.0: SYSTÈME DE TIMER
-// ═══════════════════════════════════════════════════════════════
-
-let timerActive = false;
-let timerInterval = null;
-let timerDuration = 0;
-let timerTimeLeft = 0;
-let timerRole = '';
-
-function showTimer(data) {
-    debugLog(`Affichage timer ${data.role} (${data.duration}s)`, 'info');
-    
-    timerActive = true;
-    timerDuration = data.duration;
-    timerTimeLeft = data.duration;
-    timerRole = data.role;
-    
-    const container = document.getElementById('timer-container');
-    const content = container.querySelector('.timer-content');
-    const icon = container.querySelector('.timer-icon');
-    const title = container.querySelector('.timer-title');
-    const message = container.querySelector('.timer-message');
-    const timerValue = document.getElementById('timer-value');
-    const progressFill = document.getElementById('timer-progress-fill');
-    
-    // Configuration selon le rôle
-    if (timerRole === 'cible') {
-        content.classList.remove('cible');
-        content.classList.add('chasseur');
-        icon.textContent = '🔫';
-        title.textContent = 'TIMER CHASSEUR';
-    } else {
-        content.classList.remove('chasseur');
-        content.classList.add('cible');
-        icon.textContent = '🎯';
-        title.textContent = 'TIMER CIBLE';
-    }
-    
-    message.textContent = data.message || 'Temps restant...';
-    timerValue.textContent = timerTimeLeft + 's';
-    progressFill.style.width = '100%';
-    
-    container.classList.remove('hidden');
-    
-    // Démarrer le compte à rebours
-    if (timerInterval) {
-        clearInterval(timerInterval);
-    }
-    
-    timerInterval = setInterval(() => {
-        timerTimeLeft--;
-        
-        if (timerTimeLeft <= 0) {
-            hideTimer();
-            return;
-        }
-        
-        // Mettre à jour l'affichage
-        timerValue.textContent = timerTimeLeft + 's';
-        
-        // Calculer la progression
-        const progress = (timerTimeLeft / timerDuration) * 100;
-        progressFill.style.width = progress + '%';
-        
-        // Changement de couleur selon le temps restant
-        timerValue.classList.remove('warning', 'critical');
-        if (timerTimeLeft <= 10) {
-            timerValue.classList.add('critical');
-        } else if (timerTimeLeft <= 30) {
-            timerValue.classList.add('warning');
-        }
-    }, 1000);
-}
-
-function updateTimer(data) {
-    if (!timerActive) return;
-    
-    timerTimeLeft = data.timeLeft;
-    
-    const timerValue = document.getElementById('timer-value');
-    const progressFill = document.getElementById('timer-progress-fill');
-    
-    timerValue.textContent = timerTimeLeft + 's';
-    
-    const progress = (timerTimeLeft / timerDuration) * 100;
-    progressFill.style.width = progress + '%';
-    
-    timerValue.classList.remove('warning', 'critical');
-    if (timerTimeLeft <= 10) {
-        timerValue.classList.add('critical');
-    } else if (timerTimeLeft <= 30) {
-        timerValue.classList.add('warning');
-    }
-}
-
-function hideTimer() {
-    debugLog('Masquage timer', 'info');
-    
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
-    
-    timerActive = false;
-    
-    const container = document.getElementById('timer-container');
-    if (container) {
-        container.classList.add('hidden');
-    }
-}
-
-// Ajouter les nouveaux cas dans le gestionnaire de messages
-const originalMessageHandler = window.onmessage;
-window.addEventListener('message', (event) => {
-    const data = event.data;
-    if (!data || !data.action) return;
-    
-    switch (data.action) {
-        case 'showTimer':
-            showTimer(data.data);
-            break;
-        case 'updateTimer':
-            updateTimer(data.data);
-            break;
-        case 'hideTimer':
-            hideTimer();
-            break;
-    }
-});
-
-debugLog('Script timer V4.0.0 chargé', 'success');
-

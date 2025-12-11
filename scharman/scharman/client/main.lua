@@ -5,7 +5,7 @@ CreateThread(function()
     Config.InfoPrint('Initialisation script client...')
     while not ESX.IsPlayerLoaded() do Wait(100) end
     Config.SuccessPrint('Script client initialisé!')
-    Config.DebugPrint('Version: 3.2.0 FINALE - TOUS BUGS FIXÉS')
+    Config.DebugPrint('Version: 4.0.0 - SYSTÈME DE TIMERS')
 end)
 
 if Config.Debug then

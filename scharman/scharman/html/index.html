@@ -3,12 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scharman - Interface Tablette V3</title>
+    <title>Scharman - Interface Tablette V4.0</title>
     <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/timer.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family:Rajdhani:wght@300;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="notification-container"></div>
+    
+    <!-- ✅ NOUVEAU V4.0: Timer Chasseur/Cible -->
+    <div id="timer-container" class="hidden">
+        <div class="timer-content">
+            <div class="timer-icon">⏱️</div>
+            <div class="timer-title">TIMER</div>
+            <div class="timer-message">Temps restant...</div>
+            <div class="timer-display">
+                <span class="timer-label">Temps:</span>
+                <span class="timer-value" id="timer-value">60s</span>
+            </div>
+            <div class="timer-progress-bar">
+                <div class="timer-progress-fill" id="timer-progress-fill"></div>
+            </div>
+        </div>
+    </div>
     
     <div id="countdown-container" class="countdown-container hidden">
         <div class="countdown-number">3</div>
@@ -65,20 +82,6 @@
                     </div>
                     
                     <div class="game-card">
-                        <div class="card-icon">🏆</div>
-                        <h3 class="card-title">TOURNOI</h3>
-                        <p class="card-description">Participez à des tournois et gagnez des récompenses</p>
-                        <button class="btn-primary" disabled>Bientôt disponible</button>
-                    </div>
-                    
-                    <div class="game-card">
-                        <div class="card-icon">👥</div>
-                        <h3 class="card-title">ÉQUIPE</h3>
-                        <p class="card-description">Formez une équipe et affrontez d'autres équipes</p>
-                        <button class="btn-primary" disabled>Bientôt disponible</button>
-                    </div>
-                    
-                    <div class="game-card">
                         <div class="card-icon">📊</div>
                         <h3 class="card-title">CLASSEMENT</h3>
                         <p class="card-description">Consultez votre rang et vos statistiques</p>
@@ -91,7 +94,7 @@
                 <div class="info-section">
                     <div class="info-box">
                         <div class="info-label">Version</div>
-                        <div class="info-value">3.5.0</div>
+                        <div class="info-value">4.0.0</div>
                     </div>
                     <div class="info-box">
                         <div class="info-label">Statut</div>
@@ -119,7 +122,6 @@
         </div>
     </div>
     
-    <!-- Écran Victoire Manche -->
     <div id="victory-screen-container" class="hidden">
         <div class="victory-screen-content">
             <div class="victory-trophy">🏆</div>
@@ -129,7 +131,6 @@
         </div>
     </div>
     
-    <!-- Scoreboard Rounds -->
     <div id="round-scoreboard-container" class="hidden">
         <div class="round-scoreboard-content">
             <div class="scoreboard-header">
@@ -152,7 +153,6 @@
         </div>
     </div>
     
-    <!-- Match Final -->
     <div id="match-end-container" class="hidden">
         <div class="match-end-content">
             <div class="match-end-trophy">🏆</div>

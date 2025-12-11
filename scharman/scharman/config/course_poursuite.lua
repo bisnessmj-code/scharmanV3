@@ -32,11 +32,16 @@ Config.CoursePoursuit.ReturnToNormalCoords = vector4(-2660.294434, -765.257142, 
 Config.CoursePoursuit.EnableRounds = true
 Config.CoursePoursuit.MaxRounds = 3
 Config.CoursePoursuit.RoundsToWin = 2
-Config.CoursePoursuit.TimeBetweenRounds = 3000  -- ✅ V3.9.10: Réduit de 7000 à 3000 (3 secondes)
+Config.CoursePoursuit.TimeBetweenRounds = 3000
 Config.CoursePoursuit.ShowRoundScoreboard = true
 Config.CoursePoursuit.RoundRespawnDelay = 3000
 
 Config.CoursePoursuit.PlayerHealth = 200
+Config.CoursePoursuit.PlayerArmor = 100  -- ✅ NOUVEAU: Armor au début de chaque round
+
+-- ✅ NOUVEAU: Timers pour chasseur et cible
+Config.CoursePoursuit.ChasseurZoneTimer = 60  -- 60 secondes (1 minute) pour créer la zone
+Config.CoursePoursuit.CibleZoneTimer = 60     -- 60 secondes (1 minute) pour rejoindre la zone
 
 Config.CoursePoursuit.VehicleModel = 'Kuruma2'
 Config.CoursePoursuit.VehicleList = {
@@ -66,7 +71,7 @@ Config.CoursePoursuit.VehicleCustomization = {
 
 Config.CoursePoursuit.EnableCountdown = true
 Config.CoursePoursuit.BlockExitVehicle = true
-Config.CoursePoursuit.BlockExitDuration = 15  -- ✅ 15 SECONDES
+Config.CoursePoursuit.BlockExitDuration = 15
 
 Config.CoursePoursuit.EnableWarZone = true
 Config.CoursePoursuit.WarZoneRadius = 50.0
@@ -102,6 +107,7 @@ Config.CoursePoursuit.Notifications = {
     canExitVehicle = "✅ Vous pouvez maintenant sortir du véhicule!",
     warZoneCreated = "🔴 ZONE DE GUERRE créée à votre position !",
     weaponGiven = "🔫 Pistolet Cal .50 équipé !",
+    armorGiven = "🛡️ Gilet pare-balles équipé !",  -- ✅ NOUVEAU
     mustJoinZone = "⚠️ Vous devez d'abord REJOINDRE LA ZONE pour descendre !",
     joinZoneFirst = "🎯 Rejoignez la zone rouge sur votre carte !",
     zoneJoined = "✅ Zone rejointe ! Vous pouvez descendre !",
@@ -119,7 +125,11 @@ Config.CoursePoursuit.Notifications = {
     ended = "🏁 La partie est terminée !",
     instanceFull = "❌ Cette instance est pleine",
     noPlayerFound = "❌ Aucun joueur trouvé. Réessayez.",
-    errorCreatingInstance = "❌ Impossible de créer une instance"
+    errorCreatingInstance = "❌ Impossible de créer une instance",
+    chasseurTimerWarning = "⏰ CHASSEUR: %d secondes pour créer la zone !",  -- ✅ NOUVEAU
+    chasseurTimeout = "⏱️ TEMPS ÉCOULÉ ! Le chasseur n'a pas créé la zone !",  -- ✅ NOUVEAU
+    cibleTimerWarning = "⏰ CIBLE: %d secondes pour rejoindre la zone !",  -- ✅ NOUVEAU
+    cibleTimeout = "⏱️ TEMPS ÉCOULÉ ! La cible n'a pas rejoint la zone !"  -- ✅ NOUVEAU
 }
 
 Config.CoursePoursuit.MessageDuration = 3000

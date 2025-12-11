@@ -414,3 +414,139 @@ function hideMatchEnd() {
         container.classList.add('hidden');
     }
 }
+
+
+
+// ═══════════════════════════════════════════════════════════════
+// ✅ NOUVEAU V4.0: SYSTÈME DE TIMER
+// ═══════════════════════════════════════════════════════════════
+
+let timerActive = false;
+let timerInterval = null;
+let timerDuration = 0;
+let timerTimeLeft = 0;
+let timerRole = '';
+
+function showTimer(data) {
+    debugLog(`Affichage timer ${data.role} (${data.duration}s)`, 'info');
+    
+    timerActive = true;
+    timerDuration = data.duration;
+    timerTimeLeft = data.duration;
+    timerRole = data.role;
+    
+    const container = document.getElementById('timer-container');
+    const content = container.querySelector('.timer-content');
+    const icon = container.querySelector('.timer-icon');
+    const title = container.querySelector('.timer-title');
+    const message = container.querySelector('.timer-message');
+    const timerValue = document.getElementById('timer-value');
+    const progressFill = document.getElementById('timer-progress-fill');
+    
+    // Configuration selon le rôle
+    if (timerRole === 'chasseur') {
+        content.classList.remove('cible');
+        content.classList.add('chasseur');
+        icon.textContent = '🔫';
+        title.textContent = 'TIMER CHASSEUR';
+    } else {
+        content.classList.remove('chasseur');
+        content.classList.add('cible');
+        icon.textContent = '🎯';
+        title.textContent = 'TIMER CIBLE';
+    }
+    
+    message.textContent = data.message || 'Temps restant...';
+    timerValue.textContent = timerTimeLeft + 's';
+    progressFill.style.width = '100%';
+    
+    container.classList.remove('hidden');
+    
+    // Démarrer le compte à rebours
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
+    
+    timerInterval = setInterval(() => {
+        timerTimeLeft--;
+        
+        if (timerTimeLeft <= 0) {
+            hideTimer();
+            return;
+        }
+        
+        // Mettre à jour l'affichage
+        timerValue.textContent = timerTimeLeft + 's';
+        
+        // Calculer la progression
+        const progress = (timerTimeLeft / timerDuration) * 100;
+        progressFill.style.width = progress + '%';
+        
+        // Changement de couleur selon le temps restant
+        timerValue.classList.remove('warning', 'critical');
+        if (timerTimeLeft <= 10) {
+            timerValue.classList.add('critical');
+        } else if (timerTimeLeft <= 30) {
+            timerValue.classList.add('warning');
+        }
+    }, 1000);
+}
+
+function updateTimer(data) {
+    if (!timerActive) return;
+    
+    timerTimeLeft = data.timeLeft;
+    
+    const timerValue = document.getElementById('timer-value');
+    const progressFill = document.getElementById('timer-progress-fill');
+    
+    timerValue.textContent = timerTimeLeft + 's';
+    
+    const progress = (timerTimeLeft / timerDuration) * 100;
+    progressFill.style.width = progress + '%';
+    
+    timerValue.classList.remove('warning', 'critical');
+    if (timerTimeLeft <= 10) {
+        timerValue.classList.add('critical');
+    } else if (timerTimeLeft <= 30) {
+        timerValue.classList.add('warning');
+    }
+}
+
+function hideTimer() {
+    debugLog('Masquage timer', 'info');
+    
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    
+    timerActive = false;
+    
+    const container = document.getElementById('timer-container');
+    if (container) {
+        container.classList.add('hidden');
+    }
+}
+
+// Ajouter les nouveaux cas dans le gestionnaire de messages
+const originalMessageHandler = window.onmessage;
+window.addEventListener('message', (event) => {
+    const data = event.data;
+    if (!data || !data.action) return;
+    
+    switch (data.action) {
+        case 'showTimer':
+            showTimer(data.data);
+            break;
+        case 'updateTimer':
+            updateTimer(data.data);
+            break;
+        case 'hideTimer':
+            hideTimer();
+            break;
+    }
+});
+
+debugLog('Script timer V4.0.0 chargé', 'success');
+

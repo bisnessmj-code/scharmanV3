@@ -4,7 +4,7 @@
 -- ╚════██║██║     ██╔══██║██╔══██║██╔══██╗██║╚██╔╝██║██╔══██║██║╚██╗██║
 -- ███████║╚██████╗██║  ██║██║  ██║██║  ██║██║ ╚═╝ ██║██║  ██║██║ ╚████║
 -- ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
--- CLIENT - MODE COURSE POURSUITE V3.9.13 FINAL - TOUS BUGS CORRIGÉS
+-- CLIENT - MODE COURSE POURSUITE V4.0.0 - SYSTÈME DE TIMERS
 -- ═══════════════════════════════════════════════════════════════
 
 -- ═══════════════════════════════════════════════════════════════
@@ -20,18 +20,28 @@ local opponentId = nil
 
 -- Threads
 local blockExitThread = nil
-local blockExitTimerThread = nil  -- ✅ V3.9.12: Thread timer séparé
+local blockExitTimerThread = nil
 local vehicleExitThread = nil
 local damageZoneThread = nil
 local warZoneThread = nil
 local warningMessageActive = false
 local zoneWaitingThread = nil
 local vehicleShootBlockThread = nil
-local deathInVehicleThread = nil  -- ✅ V3.9.11: Thread mort avant combat
+local deathInVehicleThread = nil
+
+-- ✅ NOUVEAU V4.0: Threads pour les timers
+local chasseurTimerThread = nil
+local cibleTimerThread = nil
 
 -- Timers
 local gameEndTime = nil
 local gameStartTime = nil
+
+-- ✅ NOUVEAU V4.0: Timers spécifiques
+local chasseurZoneTimeLeft = 0
+local cibleZoneTimeLeft = 0
+local chasseurTimerActive = false
+local cibleTimerActive = false
 
 -- Zone de guerre
 local canExitVehicle = false
@@ -141,7 +151,151 @@ local function ResurrectPlayerWithAnimation(ped, coords)
     Config.SuccessPrint('[REVIVE] Réanimation complète!')
 end
 
--- ═════════════════════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════
+-- ✅ NOUVEAU V4.0: GESTION TIMERS CHASSEUR
+-- ═══════════════════════════════════════════════════════════════
+
+local function StartChasseurTimer()
+    if chasseurTimerThread or not iAmChasseur then return end
+    
+    Config.InfoPrint('[TIMER CHASSEUR] 🎯 Démarrage timer zone (60s)')
+    
+    chasseurZoneTimeLeft = Config.CoursePoursuit.ChasseurZoneTimer
+    chasseurTimerActive = true
+    
+    -- Afficher le timer
+    SendNUIMessage({
+        action = 'showTimer',
+        data = {
+            role = 'chasseur',
+            duration = chasseurZoneTimeLeft,
+            message = 'Créez la zone de guerre !'
+        }
+    })
+    
+    chasseurTimerThread = CreateThread(function()
+        while chasseurTimerActive and chasseurZoneTimeLeft > 0 and not zoneCreatedByMe do
+            Wait(1000)
+            chasseurZoneTimeLeft = chasseurZoneTimeLeft - 1
+            
+            -- Mettre à jour le timer UI
+            SendNUIMessage({
+                action = 'updateTimer',
+                data = {
+                    timeLeft = chasseurZoneTimeLeft
+                }
+            })
+            
+            -- Avertissements
+            if chasseurZoneTimeLeft == 30 then
+                ShowGameNotification(string.format(Config.CoursePoursuit.Notifications.chasseurTimerWarning, 30), 3000, 'warning')
+            elseif chasseurZoneTimeLeft == 10 then
+                ShowGameNotification(string.format(Config.CoursePoursuit.Notifications.chasseurTimerWarning, 10), 3000, 'error')
+            end
+        end
+        
+        -- Vérifier si timeout
+        if chasseurTimerActive and chasseurZoneTimeLeft <= 0 and not zoneCreatedByMe then
+            Config.ErrorPrint('[TIMER CHASSEUR] ⏱️ TIMEOUT! Zone non créée')
+            ShowGameNotification(Config.CoursePoursuit.Notifications.chasseurTimeout, 5000, 'error')
+            
+            -- Masquer le timer
+            SendNUIMessage({ action = 'hideTimer' })
+            
+            -- Signaler au serveur
+            TriggerServerEvent('scharman:server:chasseurTimeout', instanceId)
+        else
+            -- Zone créée à temps
+            SendNUIMessage({ action = 'hideTimer' })
+        end
+        
+        chasseurTimerThread = nil
+        chasseurTimerActive = false
+    end)
+end
+
+local function StopChasseurTimer()
+    if chasseurTimerThread then
+        chasseurTimerActive = false
+        chasseurTimerThread = nil
+        SendNUIMessage({ action = 'hideTimer' })
+        Config.InfoPrint('[TIMER CHASSEUR] ⏹️ Timer arrêté')
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ✅ NOUVEAU V4.0: GESTION TIMERS CIBLE
+-- ═══════════════════════════════════════════════════════════════
+
+local function StartCibleTimer()
+    if cibleTimerThread or not iAmCible then return end
+    
+    Config.InfoPrint('[TIMER CIBLE] 🎯 Démarrage timer zone (60s)')
+    
+    cibleZoneTimeLeft = Config.CoursePoursuit.CibleZoneTimer
+    cibleTimerActive = true
+    
+    -- Afficher le timer
+    SendNUIMessage({
+        action = 'showTimer',
+        data = {
+            role = 'cible',
+            duration = cibleZoneTimeLeft,
+            message = 'Rejoignez la zone de guerre !'
+        }
+    })
+    
+    cibleTimerThread = CreateThread(function()
+        while cibleTimerActive and cibleZoneTimeLeft > 0 and not iAmInZone do
+            Wait(1000)
+            cibleZoneTimeLeft = cibleZoneTimeLeft - 1
+            
+            -- Mettre à jour le timer UI
+            SendNUIMessage({
+                action = 'updateTimer',
+                data = {
+                    timeLeft = cibleZoneTimeLeft
+                }
+            })
+            
+            -- Avertissements
+            if cibleZoneTimeLeft == 30 then
+                ShowGameNotification(string.format(Config.CoursePoursuit.Notifications.cibleTimerWarning, 30), 3000, 'warning')
+            elseif cibleZoneTimeLeft == 10 then
+                ShowGameNotification(string.format(Config.CoursePoursuit.Notifications.cibleTimerWarning, 10), 3000, 'error')
+            end
+        end
+        
+        -- Vérifier si timeout
+        if cibleTimerActive and cibleZoneTimeLeft <= 0 and not iAmInZone then
+            Config.ErrorPrint('[TIMER CIBLE] ⏱️ TIMEOUT! Zone non rejointe')
+            ShowGameNotification(Config.CoursePoursuit.Notifications.cibleTimeout, 5000, 'error')
+            
+            -- Masquer le timer
+            SendNUIMessage({ action = 'hideTimer' })
+            
+            -- Signaler au serveur
+            TriggerServerEvent('scharman:server:cibleTimeout', instanceId)
+        else
+            -- Zone rejointe à temps
+            SendNUIMessage({ action = 'hideTimer' })
+        end
+        
+        cibleTimerThread = nil
+        cibleTimerActive = false
+    end)
+end
+
+local function StopCibleTimer()
+    if cibleTimerThread then
+        cibleTimerActive = false
+        cibleTimerThread = nil
+        SendNUIMessage({ action = 'hideTimer' })
+        Config.InfoPrint('[TIMER CIBLE] ⏹️ Timer arrêté')
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
 -- ZONE DE GUERRE
 -- ═══════════════════════════════════════════════════════════════
 
@@ -187,7 +341,6 @@ local function StartWarZoneThread()
         while inGame and warZoneActive do
             Wait(0)
             
-            -- ✅ V3.9.13: Protection contre warZonePosition nil
             if not warZonePosition then
                 Wait(100)
                 goto continue
@@ -237,6 +390,9 @@ local function CreateWarZone(position)
     warZoneActive = true
     zoneCreatedByMe = true
     
+    -- ✅ V4.0: Arrêter le timer chasseur
+    StopChasseurTimer()
+    
     if not CreateWarZoneVisuals(position) then
         Config.ErrorPrint('Échec création visuels zone')
         return false
@@ -279,7 +435,7 @@ local function DeleteWarZone()
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- ✅ V3.9.11: THREAD SURVEILLANCE MORT AVANT COMBAT
+-- THREAD SURVEILLANCE MORT AVANT COMBAT
 -- ═══════════════════════════════════════════════════════════════
 
 local function StartDeathInVehicleMonitor()
@@ -295,33 +451,27 @@ local function StartDeathInVehicleMonitor()
             local ped = PlayerPedId()
             local shouldMonitor = false
             
-            -- ✅ CHASSEUR: Surveiller jusqu'à création de SA zone
             if iAmChasseur and not zoneCreatedByMe then
                 shouldMonitor = true
             end
             
-            -- ✅ CIBLE: Surveiller jusqu'à entrée dans la zone adverse
             if iAmCible and not iAmInZone then
                 shouldMonitor = true
             end
             
-            -- Si on ne doit plus surveiller, arrêter le thread
             if not shouldMonitor then
                 Config.InfoPrint('[DEATH] ✅ Conditions combat remplies, fin surveillance pré-combat')
                 break
             end
             
-            -- Détecter la mort
             if IsEntityDead(ped) or GetEntityHealth(ped) <= 0 then
                 Config.InfoPrint('[DEATH] 💀 MORT AVANT COMBAT! Rôle: ' .. string.upper(myRole))
                 Config.InfoPrint('[DEATH] - Zone créée par moi: ' .. tostring(zoneCreatedByMe))
                 Config.InfoPrint('[DEATH] - Je suis dans zone: ' .. tostring(iAmInZone))
                 
-                -- Afficher écran de mort
                 SendNUIMessage({ action = 'showDeathScreen' })
                 Wait(2000)
                 
-                -- ✅ CRITIQUE: Signaler au serveur pour déclencher fin de round
                 TriggerServerEvent('scharman:server:playerDied', instanceId)
                 
                 Config.ErrorPrint('[DEATH] Événement mort envoyé au serveur!')
@@ -342,7 +492,7 @@ local function StopDeathInVehicleMonitor()
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- ✅ V3.9.10: THREAD BLOCAGE TIRS EN VÉHICULE
+-- THREAD BLOCAGE TIRS EN VÉHICULE
 -- ═══════════════════════════════════════════════════════════════
 
 local function StartVehicleShootBlockThread()
@@ -438,7 +588,6 @@ local function StartDamageZoneThread()
         while inGame and warZoneActive do
             Wait(Config.CoursePoursuit.DamageInterval)
             
-            -- ✅ V3.9.13: Protection contre warZonePosition nil
             if not warZonePosition then
                 Config.DebugPrint('[DAMAGE] warZonePosition nil, attente...')
                 Wait(500)
@@ -475,7 +624,6 @@ local function StartDamageZoneThread()
                             ShowGameNotification(Config.CoursePoursuit.Notifications.outOfZone, 1500, 'warning')
                             Wait(2000)
                             
-                            -- ✅ V3.9.13: Vérifier warZonePosition avant utilisation
                             if not warZonePosition then break end
                             
                             local newCoords = GetEntityCoords(PlayerPedId())
@@ -504,7 +652,7 @@ local function StartDamageZoneThread()
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- ✅ V3.9.12/13: THREAD BLOCAGE SORTIE VÉHICULE (CORRIGÉ)
+-- THREAD BLOCAGE SORTIE VÉHICULE
 -- ═══════════════════════════════════════════════════════════════
 
 local function StartBlockExitThread()
@@ -512,7 +660,6 @@ local function StartBlockExitThread()
     
     Config.InfoPrint('[BLOCK EXIT] Thread blocage sortie démarré')
     
-    -- ✅ V3.9.12: Stocker le thread timer dans une variable
     blockExitTimerThread = CreateThread(function()
         Config.InfoPrint('[BLOCK EXIT] ⏰ Thread timer démarré (' .. Config.CoursePoursuit.BlockExitDuration .. 's)')
         
@@ -523,7 +670,6 @@ local function StartBlockExitThread()
         
         Wait(Config.CoursePoursuit.BlockExitDuration * 1000)
         
-        -- ✅ V3.9.12: Vérifier si toujours en jeu avant de modifier l'état
         if not inGame then
             Config.InfoPrint('[BLOCK EXIT] ⏰ Timer annulé (plus en jeu)')
             blockExitTimerThread = nil
@@ -534,6 +680,9 @@ local function StartBlockExitThread()
             canExitVehicle = true
             Config.SuccessPrint('[BLOCK EXIT] ✅ Sortie véhicule autorisée (CHASSEUR)!')
             ShowGameNotification(Config.CoursePoursuit.Notifications.canExitVehicle, 5000, 'success')
+            
+            -- ✅ V4.0: Démarrer le timer chasseur
+            StartChasseurTimer()
         else
             Config.InfoPrint('[BLOCK EXIT] ⏳ CIBLE en attente de la zone...')
             ShowGameNotification(Config.CoursePoursuit.Notifications.mustJoinZone, 5000, 'warning')
@@ -582,7 +731,6 @@ local function StartBlockExitThread()
     end)
 end
 
--- ✅ V3.9.12: Nouvelle fonction pour arrêter proprement les threads de blocage
 local function StopBlockExitThread()
     if blockExitThread then
         blockExitThread = nil
@@ -594,7 +742,6 @@ local function StopBlockExitThread()
         Config.InfoPrint('[BLOCK EXIT] ⏰ Thread timer réinitialisé')
     end
     
-    -- Masquer le UI lock si affiché
     SendNUIMessage({ action = 'hideVehicleLock' })
 end
 
@@ -662,10 +809,12 @@ local function StartZonePresenceCheckThread()
         
         Config.InfoPrint('[CIBLE] Zone détectée! Vérification présence...')
         
+        -- ✅ V4.0: Démarrer le timer cible
+        StartCibleTimer()
+        
         while inGame and iAmCible and not iAmInZone and warZonePosition do
             Wait(500)
             
-            -- ✅ V3.9.13: Vérifier warZonePosition avant utilisation
             if not warZonePosition then
                 Config.DebugPrint('[CIBLE] warZonePosition nil, arrêt')
                 break
@@ -678,6 +827,9 @@ local function StartZonePresenceCheckThread()
             if distance <= warZoneRadius then
                 iAmInZone = true
                 canExitVehicle = true
+                
+                -- ✅ V4.0: Arrêter le timer cible
+                StopCibleTimer()
                 
                 Config.SuccessPrint('[CIBLE] ✅ Je suis dans la zone adverse!')
                 
@@ -711,7 +863,7 @@ local function StartCoursePoursuiteGame(data)
     if inGame then return end
     
     Config.InfoPrint('═══════════════════════════════════════════════════════════════')
-    Config.InfoPrint('DÉMARRAGE COURSE POURSUITE V3.9.13')
+    Config.InfoPrint('DÉMARRAGE COURSE POURSUITE V4.0.0')
     Config.InfoPrint('═══════════════════════════════════════════════════════════════')
     
     local success, err = pcall(function()
@@ -753,8 +905,12 @@ local function StartCoursePoursuiteGame(data)
             Wait(3000)
         end
         
+        -- ✅ V4.0: Appliquer HP et ARMOR
         SetEntityHealth(ped, Config.CoursePoursuit.PlayerHealth)
+        SetPedArmour(ped, Config.CoursePoursuit.PlayerArmor)
         Config.SuccessPrint('HP joueur: ' .. Config.CoursePoursuit.PlayerHealth)
+        Config.SuccessPrint('Armor joueur: ' .. Config.CoursePoursuit.PlayerArmor)
+        ShowGameNotification(Config.CoursePoursuit.Notifications.armorGiven, 3000, 'success')
         
         Wait(1000)
         
@@ -866,14 +1022,17 @@ local function StopCoursePoursuiteGame(showVictory)
     if not inGame then return end
     
     Config.InfoPrint('═══════════════════════════════════════════════════════════════')
-    Config.InfoPrint('ARRÊT COURSE POURSUITE V3.9.13')
+    Config.InfoPrint('ARRÊT COURSE POURSUITE V4.0.0')
     Config.InfoPrint('═══════════════════════════════════════════════════════════════')
     
     inGame = false
     
     Wait(100)
     
-    -- ✅ V3.9.12: Arrêter TOUS les threads proprement
+    -- ✅ V4.0: Arrêter les timers
+    StopChasseurTimer()
+    StopCibleTimer()
+    
     StopBlockExitThread()
     blockExitThread = nil
     vehicleExitThread = nil
@@ -897,6 +1056,7 @@ local function StopCoursePoursuiteGame(showVictory)
     SendNUIMessage({ action = 'hideDeathScreen' })
     SendNUIMessage({ action = 'hideVehicleLock' })
     SendNUIMessage({ action = 'hideCountdown' })
+    SendNUIMessage({ action = 'hideTimer' })
     
     DeleteWarZone()
     
@@ -916,6 +1076,7 @@ local function StopCoursePoursuiteGame(showVictory)
         end
         
         SetEntityHealth(ped, 200)
+        SetPedArmour(ped, 0)
         ClearPedTasksImmediately(ped)
         
         SetEntityCoords(ped, returnCoords.x, returnCoords.y, returnCoords.z, false, false, false, true)
@@ -1032,15 +1193,14 @@ if Config.Debug then
         print('Zone créée par adversaire: ' .. (zoneCreatedByOpponent and 'OUI' or 'NON'))
         print('Je suis dans zone: ' .. (iAmInZone and 'OUI' or 'NON'))
         print('Peut sortir véhicule: ' .. (canExitVehicle and 'OUI' or 'NON'))
-        print('Thread mort actif: ' .. (deathInVehicleThread and 'OUI' or 'NON'))
         print('─────────────────────────────────────────────────────────────')
-        print('Thread blocage contrôle: ' .. (blockExitThread and 'OUI' or 'NON'))
-        print('Thread blocage timer: ' .. (blockExitTimerThread and 'OUI' or 'NON'))
+        print('Timer chasseur actif: ' .. (chasseurTimerActive and 'OUI' or 'NON'))
+        print('Timer cible actif: ' .. (cibleTimerActive and 'OUI' or 'NON'))
         print('═══════════════════════════════════════════════════════════════')
     end, false)
 end
 
-Config.DebugPrint('client/course_poursuite.lua V3.9.13 chargé')
+Config.DebugPrint('client/course_poursuite.lua V4.0.0 chargé')
 
 -- ═══════════════════════════════════════════════════════════════
 -- ÉVÉNEMENTS ROUNDS
@@ -1103,8 +1263,13 @@ end)
 RegisterNetEvent('scharman:client:stopRound', function()
     Config.InfoPrint('[ROUND] ═══ ARRÊT MANCHE ═══')
     
+    -- ✅ V4.0: Arrêter les timers
+    StopChasseurTimer()
+    StopCibleTimer()
+    
     SendNUIMessage({ action = 'hideDeathScreen' })
     SendNUIMessage({ action = 'hideVictoryScreen' })
+    SendNUIMessage({ action = 'hideTimer' })
     
     local ped = PlayerPedId()
     
@@ -1128,7 +1293,6 @@ RegisterNetEvent('scharman:client:stopRound', function()
     zoneCreatedByOpponent = false
     iAmInZone = false
     
-    -- ✅ V3.9.12: Arrêter TOUS les threads proprement
     StopBlockExitThread()
     StopDeathInVehicleMonitor()
     
@@ -1169,7 +1333,12 @@ RegisterNetEvent('scharman:client:startNextRound', function(data)
     
     SetEntityCoords(ped, spawnCoords.x, spawnCoords.y, spawnCoords.z, false, false, false, true)
     SetEntityHeading(ped, spawnCoords.w)
+    
+    -- ✅ V4.0: Appliquer HP et ARMOR
     SetEntityHealth(ped, Config.CoursePoursuit.PlayerHealth)
+    SetPedArmour(ped, Config.CoursePoursuit.PlayerArmor)
+    ShowGameNotification(Config.CoursePoursuit.Notifications.armorGiven, 3000, 'success')
+    
     ClearPedTasksImmediately(ped)
     
     Wait(500)
@@ -1239,7 +1408,6 @@ RegisterNetEvent('scharman:client:startNextRound', function(data)
         StartZonePresenceCheckThread()
     end
     
-    -- ✅ V3.9.11: CRITIQUE - Relancer la surveillance des morts pour le nouveau round
     StartDeathInVehicleMonitor()
     
     Config.SuccessPrint('[ROUND] Manche ' .. data.round .. ' lancée!')

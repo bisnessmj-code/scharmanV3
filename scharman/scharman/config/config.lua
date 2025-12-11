@@ -6,7 +6,7 @@ Config.Locale = 'fr'
 -- ⚠️ À MODIFIER: Position du PED
 Config.Ped = {
     model = 'a_m_y_business_03',
-    coords = vector4(-2663.485596, -763.872558, 5.093408, 230.540948), -- ⚠️ CHANGE-MOI!
+    coords = vector4(-2649.441650, -760.061524, 3.948730, 98.212594),
     scenario = 'WORLD_HUMAN_CLIPBOARD',
     invincible = true,
     freeze = true,

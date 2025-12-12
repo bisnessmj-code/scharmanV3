@@ -1,4 +1,4 @@
--- CLIENT - NUI AVEC FIX STATS
+-- CLIENT - NUI
 local isNuiOpen = false
 local disableControlsThread = nil
 
@@ -40,19 +40,19 @@ RegisterNUICallback('joinCoursePoursuit', function(data, cb)
     cb('ok')
 end)
 
--- ✅ FIX : Callback pour ouvrir les stats
 RegisterNUICallback('openStats', function(data, cb)
     if Config.Stats and Config.Stats.Enabled then
-        Config.InfoPrint('[STATS] Ouverture interface stats')
         TriggerEvent('scharman:client:openStatsInterface')
+    else
+        Config.ErrorPrint('[STATS] Système désactivé')
     end
     cb('ok')
 end)
 
--- ✅ FIX : Callback pour fermer les stats (SANS boucle)
 RegisterNUICallback('closeStats', function(data, cb)
-    Config.InfoPrint('[STATS] Fermeture stats depuis NUI')
-    SetNuiFocus(false, false)
+    SendNUIMessage({
+        action = 'closeStats'
+    })
     cb('ok')
 end)
 
@@ -63,4 +63,4 @@ CreateThread(function()
     end
 end)
 
-Config.DebugPrint('client/nui.lua FIX chargé')
+Config.DebugPrint('client/nui.lua chargé')

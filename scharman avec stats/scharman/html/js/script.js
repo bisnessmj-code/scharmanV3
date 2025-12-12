@@ -178,20 +178,12 @@ function handleCardClick(cardElement, index) {
 
 function openStats() {
     debugLog('Opening stats interface...', 'info');
-    // ✅ FIX : Ne PAS fermer l'interface, juste la cacher
-    if (Elements.app) {
-        Elements.app.classList.add('hidden');
-    }
+    closeInterface();
     
-    // Appeler le callback pour ouvrir les stats
-    post('openStats', {});
-
-    // Déplace le setTimeout pour qu'il soit à l'intérieur de la fonction
     setTimeout(() => {
         post('openStats', {});
     }, 400);
-} 
-
+}
 
 function displayStats(data) {
     if (!data) {
@@ -223,11 +215,6 @@ function closeStats() {
     }
     
     post('closeStats');
-    
-    // Réafficher l'interface principale
-    if (Elements.app) {
-        Elements.app.classList.remove('hidden');
-    }
 }
 
 function showMyStats() {
@@ -754,10 +741,7 @@ window.addEventListener('message', (event) => {
             displayStats(data.data);
             break;
         case 'closeStats':
-            // ✅ FIX : Ignorer ce message pour éviter la boucle
-            // La fermeture est gérée par le bouton qui appelle closeStats()
-            debugLog('Received closeStats message - ignored to prevent loop', 'info');
-            break;
+            closeStats();
             break;
         case 'updateMyStats':
             updateMyStatsDisplay(data.data);

@@ -43,7 +43,7 @@ Config.CoursePoursuit.PlayerArmor = 100  -- ✅ NOUVEAU: Armor au début de chaq
 Config.CoursePoursuit.ChasseurZoneTimer = 60  -- 60 secondes (1 minute) pour créer la zone
 Config.CoursePoursuit.CibleZoneTimer = 60     -- 60 secondes (1 minute) pour rejoindre la zone
 
-Config.CoursePoursuit.VehicleModel = 'strcoupe'
+Config.CoursePoursuit.VehicleModel = 'scharmann'
 Config.CoursePoursuit.VehicleList = {
     'sultan', 'futo', 'elegy2', 'jester', 'massacro'
 }

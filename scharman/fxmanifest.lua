@@ -36,7 +36,8 @@ ui_page 'html/index.html'
 files {
     'html/index.html',
     'html/css/style.css',
-    'html/js/script.js'
+    'html/js/script.js',
+	'html/img/logo.png'
 }
 
 dependencies {

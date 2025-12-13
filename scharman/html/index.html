@@ -3,13 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scharman V4.0</title>
+    <title>Scharman V4.0 - Interface Professionnelle</title>
     <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- ═══════════════════════════════════════════════════════════════
+         CONTAINER PRINCIPAL - INTERFACE FULL-SCREEN
+         ═══════════════════════════════════════════════════════════════ -->
+    <div id="app" class="app-container hidden">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="brand-logo">S</div>
+                <div class="brand-text">
+                    <div class="brand-name">Scharman</div>
+                    <div class="brand-tagline">Plateforme PVP 1v1</div>
+                </div>
+            </div>
+            
+            <div class="header-center-logo">
+                <img src="./img/logo.png" alt="Logo Principal Scharman">
+            </div>
+            
+            <div class="header-actions">
+                <div class="header-status">
+                    <div class="status-dot"></div>
+                    <span class="status-text">En ligne</span>
+                </div>
+                <button class="btn-close" id="closeBtn">×</button>
+            </div>
+        </header>
+        
+        <!-- NAVIGATION PAR ONGLETS -->
+        <nav class="app-tabs">
+            <button class="app-tab active" data-tab="lobby">
+                <span class="tab-icon">🎮</span>
+                <span>Lobby</span>
+            </button>
+            <button class="app-tab" data-tab="my-stats">
+                <span class="tab-icon">📊</span>
+                <span>Mes Statistiques</span>
+            </button>
+            <button class="app-tab" data-tab="leaderboard">
+                <span class="tab-icon">🏆</span>
+                <span>Classement Global</span>
+            </button>
+        </nav>
+        
+        <!-- CONTENU PRINCIPAL -->
+        <main class="app-content">
+            <!-- ═══════════════════════════════════════════════════════════
+                 SECTION LOBBY - MODE DE JEU + RÈGLES
+                 ═══════════════════════════════════════════════════════════ -->
+            <section id="lobby-section" class="content-section active">
+                
+                
+                <div class="lobby-grid">
+                    <!-- Card Mode de Jeu (Gauche - Plus Grand) -->
+                    <div class="mode-card-main" data-mode="course">
+                        
+                        <div class="mode-header">
+                            <div class="mode-icon-large">🎯</div>
+                            <div class="mode-info">
+                                <h2 class="mode-title-large">Course Poursuite Drop</h2>
+                                <p class="mode-subtitle">Combat tactique CHASSEUR vs CIBLE</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mode-features">
+                            <div class="feature-item">
+                                <span class="feature-icon">🎮</span>
+                                <div class="feature-text">
+                                    <strong>Matchmaking automatique</strong>
+                                    <span>Trouvez un adversaire instantanément</span>
+                                </div>
+                            </div>
+                            
+                            <div class="feature-item">
+                                <span class="feature-icon">🏆</span>
+                                <div class="feature-text">
+                                    <strong>Système de manches</strong>
+                                    <span>Best of 3 - Premier à 2 points</span>
+                                </div>
+                            </div>
+                            
+                            <div class="feature-item">
+                                <span class="feature-icon">📊</span>
+                                <div class="feature-text">
+                                    <strong>Classement ELO</strong>
+                                    <span>Grimpez les rangs et prouvez votre valeur</span>
+                                </div>
+                            </div>
+                            
+                            <div class="feature-item">
+                                <span class="feature-icon">⚡</span>
+                                <div class="feature-text">
+                                    <strong>Rôles asymétriques</strong>
+                                    <span>Chasseur vs Cible - Inversion à chaque manche</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn-primary btn-large">
+                            <span class="btn-icon">🎮</span>
+                            <span>Rejoindre une Partie</span>
+                        </button>
+                        
+                        <div class="mode-stats">
+                            <div class="stat-item">
+                                <span class="stat-value" id="players-online">—</span>
+                                <span class="stat-label">Joueurs en ligne</span>
+                            </div>
+                            <div class="stat-divider"></div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="active-games">—</span>
+                                <span class="stat-label">Parties actives</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Section Règles (Droite) -->
+                    <div class="rules-section">
+                        <div class="rules-header">
+                            <div class="rules-icon">📋</div>
+                            <h3 class="rules-title">Règles du Jeu</h3>
+                        </div>
+                        
+                        <div class="rules-content">
+                            <!-- Principe -->
+                            <div class="rule-block">
+                                <div class="rule-title">
+                                    <span class="rule-icon">🎯</span>
+                                    <span>Principe</span>
+                                </div>
+                                <p class="rule-text">
+                                    Combat 1v1 avec <strong>rôles asymétriques</strong> : le Chasseur poursuit la Cible. 
+                                    Les rôles s'inversent à chaque manche.
+                                </p>
+                            </div>
+                            
+                            <!-- Rôles -->
+                            <div class="rule-block">
+                                <div class="rule-title">
+                                    <span class="rule-icon">👥</span>
+                                    <span>Rôles</span>
+                                </div>
+                                <div class="roles-grid">
+                                    <div class="role-item role-cible">
+                                        <div class="role-header">
+                                            <span class="role-emoji">🎯</span>
+                                            <strong>CIBLE</strong>
+                                        </div>
+                                        <span class="role-desc">Descend en premier, crée la zone de combat</span>
+                                    </div>
+                                    <div class="role-item role-chasseur">
+                                        <div class="role-header">
+                                            <span class="role-emoji">🔫</span>
+                                            <strong>CHASSEUR</strong>
+                                        </div>
+                                        <span class="role-desc">Poursuit la cible et doit rejoindre la zone</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Déroulement -->
+                            <div class="rule-block">
+                                <div class="rule-title">
+                                    <span class="rule-icon">⚔️</span>
+                                    <span>Déroulement</span>
+                                </div>
+                                <ul class="rule-list">
+                                    <li>Premier à <strong>2 points</strong> remporte la partie</li>
+                                    <li>Arme fournie : <strong>Pistolet Cal .50</strong></li>
+                                    <li>Rôles inversés à chaque manche</li>
+                                    <li>Zone de combat créée par la Cible</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Interdictions -->
+                            <div class="rule-block rule-warning">
+                                <div class="rule-title">
+                                    <span class="rule-icon">⛔</span>
+                                    <span>Interdictions</span>
+                                </div>
+                                <ul class="rule-list">
+                                    <li><strong>Usebug</strong> - Exploitation de bugs</li>
+                                    <li><strong>Trash talk</strong> - Insultes</li>
+                                    <li><strong>Toxicité</strong> - Comportement inapproprié</li>
+                                </ul>
+                                <p class="rule-consequence">⚠️ Risque de ban permanent</p>
+                            </div>
+                            
+                            <!-- Commande d'urgence -->
+                            <div class="rule-block rule-info">
+                                <div class="rule-title">
+                                    <span class="rule-icon">🆘</span>
+                                    <span>Commande d'Urgence</span>
+                                </div>
+                                <div class="command-box">
+                                    <code class="command-code">/quit_course</code>
+                                    <p class="command-desc">Quitter en cas de bug</p>
+                                </div>
+                                <p class="rule-consequence">⚠️ Vous perdrez des points ELO en quittant ou en vous déconnectant</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- ═══════════════════════════════════════════════════════════
+                 SECTION MES STATISTIQUES
+                 ═══════════════════════════════════════════════════════════ -->
+            <section id="my-stats-section" class="content-section">
+                <div class="stats-header">
+                    <h1 class="stats-title">Mes Statistiques</h1>
+                    <p class="stats-subtitle">Consultez vos performances et votre progression</p>
+                </div>
+                
+                <div class="rank-banner">
+                    <div class="rank-content">
+                        <div class="rank-icon" id="my-rank-icon">🥉</div>
+                        <div class="rank-info">
+                            <div class="rank-name" id="my-rank">Bronze</div>
+                            <div class="rank-elo">
+                                <span class="rank-elo-value" id="my-elo">1000</span>
+                                <span> ELO</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card kills">
+                        <div class="stat-header">
+                            <div class="stat-label">Kills</div>
+                            <div class="stat-icon">🎯</div>
+                        </div>
+                        <div class="stat-value" id="my-kills">0</div>
+                    </div>
+                    
+                    <div class="stat-card deaths">
+                        <div class="stat-header">
+                            <div class="stat-label">Morts</div>
+                            <div class="stat-icon">💀</div>
+                        </div>
+                        <div class="stat-value" id="my-deaths">0</div>
+                    </div>
+                    
+                    <div class="stat-card ratio">
+                        <div class="stat-header">
+                            <div class="stat-label">Ratio K/D</div>
+                            <div class="stat-icon">📈</div>
+                        </div>
+                        <div class="stat-value" id="my-ratio">0.00</div>
+                    </div>
+                    
+                    <div class="stat-card wins">
+                        <div class="stat-header">
+                            <div class="stat-label">Victoires</div>
+                            <div class="stat-icon">🏆</div>
+                        </div>
+                        <div class="stat-value" id="my-wins">0</div>
+                    </div>
+                    
+                    <div class="stat-card losses">
+                        <div class="stat-header">
+                            <div class="stat-label">Défaites</div>
+                            <div class="stat-icon">❌</div>
+                        </div>
+                        <div class="stat-value" id="my-losses">0</div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- ═══════════════════════════════════════════════════════════
+                 SECTION CLASSEMENT GLOBAL
+                 ═══════════════════════════════════════════════════════════ -->
+            <section id="leaderboard-section" class="content-section">
+                <div class="leaderboard-header">
+                    <h1 class="leaderboard-title">Classement Global</h1>
+                    <p class="leaderboard-subtitle">Top 50 des meilleurs joueurs classés par ELO</p>
+                </div>
+                
+                <div class="leaderboard-container">
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>Rang</th>
+                                <th>Joueur</th>
+                                <th>Kills</th>
+                                <th>Morts</th>
+                                <th>K/D</th>
+                                <th>ELO</th>
+                                <th>Niveau</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-tertiary);">
+                                    Chargement des données...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+        
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <div class="footer-text">
+                Appuyez sur <span class="key-highlight">ESC</span> pour fermer
+            </div>
+        </footer>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════
+         ÉLÉMENTS DE JEU (NOTIFICATIONS, TIMERS, ETC.)
+         ═══════════════════════════════════════════════════════════════ -->
+    
     <!-- Notifications -->
     <div id="notification-container"></div>
+    
+    <!-- Countdown -->
+    <div id="countdown-container" class="hidden">
+        <div class="countdown-number">3</div>
+    </div>
     
     <!-- Timer Chasseur/Cible -->
     <div id="timer-container" class="hidden">
@@ -18,7 +337,6 @@
             <div class="timer-title">TIMER</div>
             <div class="timer-message">Temps restant...</div>
             <div class="timer-display">
-                <span class="timer-label">Temps:</span>
                 <span id="timer-value">60s</span>
             </div>
             <div class="timer-progress-bar">
@@ -27,199 +345,17 @@
         </div>
     </div>
     
-    <!-- Countdown 3-2-1-GO -->
-    <div id="countdown-container" class="hidden">
-        <div class="countdown-number">3</div>
-    </div>
-    
     <!-- Vehicle Lock -->
     <div id="vehicle-lock-container" class="hidden">
         <div class="vehicle-lock-content">
             <div class="lock-icon">🔒</div>
             <div class="lock-title">VÉHICULE VERROUILLÉ</div>
             <div class="lock-message">Impossible de sortir</div>
-            <div class="lock-timer">
-                <span class="timer-label">Temps:</span>
+            <div class="timer-display">
                 <span class="timer-value" id="vehicle-lock-timer">30s</span>
             </div>
             <div class="lock-progress-bar">
                 <div class="lock-progress-fill" id="vehicle-lock-progress"></div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Interface Principale -->
-    <div id="app" class="app-container hidden">
-        <div class="tablet">
-            <div class="tablet-header">
-                <div class="header-left">
-                    <div class="logo-container">
-                        <div class="logo-icon">⚡</div>
-                        <span class="logo-text">SCHARMAN</span>
-                    </div>
-                </div>
-                <div class="header-center">
-                    <h1 class="header-title">PVP 1V1</h1>
-                </div>
-                <div class="header-right">
-                    <button class="btn-close" id="closeBtn">×</button>
-                </div>
-            </div>
-            
-            <div class="tablet-content">
-                <div class="welcome-section">
-                    <div class="welcome-icon">🎮</div>
-                    <h2 class="welcome-title">Bienvenue</h2>
-                    <p class="welcome-text">Affrontez un autre joueur en duel PVP 1v1<br>Matchmaking automatique</p>
-                </div>
-                
-                <div class="divider"></div>
-                
-                <div class="cards-grid">
-                    <div class="game-card" data-mode="course">
-                        <div class="card-icon">🏁</div>
-                        <h3 class="card-title">COURSE POURSUITE</h3>
-                        <p class="card-description">Combat dans une zone de guerre</p>
-                        <button class="btn-primary">JOUER</button>
-                    </div>
-                    
-                    <div class="game-card" data-mode="stats">
-                        <div class="card-icon">📊</div>
-                        <h3 class="card-title">CLASSEMENT</h3>
-                        <p class="card-description">Statistiques et rang</p>
-                        <button class="btn-primary">VOIR</button>
-                    </div>
-                </div>
-                
-                <div class="divider"></div>
-                
-                <div class="info-section">
-                    <div class="info-box">
-                        <div class="info-label">Version</div>
-                        <div class="info-value">4.0.0</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Statut</div>
-                        <div class="info-value status-online">● Online</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Mode</div>
-                        <div class="info-value">1v1</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="tablet-footer">
-                <div class="footer-text">Appuyez sur <span class="key-highlight">ESC</span> pour fermer</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Interface Statistiques -->
-    <div id="stats-container" class="stats-container hidden">
-        <div class="stats-panel">
-            <div class="stats-header">
-                <div class="logo-container">
-                    <div class="logo-icon">⚡</div>
-                    <span class="logo-text">SCHARMAN</span>
-                </div>
-                <h1 class="stats-title">📊 STATISTIQUES</h1>
-                <button class="btn-close" id="stats-close-btn">×</button>
-            </div>
-            
-            <div class="stats-tabs">
-                <button class="stats-tab active" id="my-stats-tab">
-                    <span class="tab-icon">👤</span>
-                    <span>Mes Stats</span>
-                </button>
-                <button class="stats-tab" id="leaderboard-tab">
-                    <span class="tab-icon">🏆</span>
-                    <span>Classement</span>
-                </button>
-            </div>
-            
-            <!-- Mes Stats -->
-            <div id="my-stats-content" class="stats-content">
-                <div class="rank-display">
-                    <div class="rank-icon" id="my-rank-icon">🥉</div>
-                    <div class="rank-info">
-                        <div class="rank-name" id="my-rank">Bronze</div>
-                        <div class="rank-elo">
-                            <span class="elo-value" id="my-elo">1000</span>
-                            <span class="elo-label">ELO</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stats-grid">
-                    <div class="stat-card kills">
-                        <div class="stat-icon">🎯</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="my-kills">0</div>
-                            <div class="stat-label">Kills</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card deaths">
-                        <div class="stat-icon">💀</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="my-deaths">0</div>
-                            <div class="stat-label">Morts</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card ratio">
-                        <div class="stat-icon">📈</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="my-ratio">0.00</div>
-                            <div class="stat-label">Ratio K/D</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card wins">
-                        <div class="stat-icon">🏆</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="my-wins">0</div>
-                            <div class="stat-label">Victoires</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card losses">
-                        <div class="stat-icon">❌</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="my-losses">0</div>
-                            <div class="stat-label">Défaites</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Leaderboard -->
-            <div id="leaderboard-content" class="stats-content hidden">
-                <div class="leaderboard-table-container">
-                    <table class="leaderboard-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Joueur</th>
-                                <th>Kills</th>
-                                <th>Morts</th>
-                                <th>K/D</th>
-                                <th>ELO</th>
-                                <th>Rang</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leaderboard-body">
-                            <tr>
-                                <td colspan="7" style="text-align: center; padding: 20px;">Chargement...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <div class="stats-footer">
-                <div class="footer-text">Appuyez sur <span class="key-highlight">ESC</span> pour fermer</div>
             </div>
         </div>
     </div>
@@ -230,7 +366,6 @@
             <div class="death-skull">💀</div>
             <div class="death-title">MORT</div>
             <div class="death-subtitle">Vous avez perdu cette manche</div>
-            <div class="death-message">Prochaine manche...</div>
         </div>
     </div>
     
@@ -240,24 +375,21 @@
             <div class="victory-trophy">🏆</div>
             <div class="victory-title">VICTOIRE</div>
             <div class="victory-subtitle">Vous avez gagné cette manche</div>
-            <div class="victory-message">Prochaine manche...</div>
         </div>
     </div>
     
     <!-- Round Scoreboard -->
     <div id="round-scoreboard-container" class="hidden">
         <div class="round-scoreboard-content">
-            <div class="scoreboard-header">
-                <div class="scoreboard-title">FIN MANCHE <span id="round-number">1</span></div>
-            </div>
+            <div class="scoreboard-title">FIN MANCHE <span id="round-number">1</span></div>
             <div class="scoreboard-scores">
-                <div class="score-box chasseur">
-                    <div class="score-label">🔫 CHASSEUR</div>
+                <div class="score-box">
+                    <div class="score-label">CHASSEUR</div>
                     <div class="score-value" id="score-chasseur">0</div>
                 </div>
                 <div class="score-separator">-</div>
-                <div class="score-box cible">
-                    <div class="score-label">🎯 CIBLE</div>
+                <div class="score-box">
+                    <div class="score-label">CIBLE</div>
                     <div class="score-value" id="score-cible">0</div>
                 </div>
             </div>
@@ -275,7 +407,6 @@
             <div class="match-end-score">
                 Score: <span id="final-score-chasseur">0</span> - <span id="final-score-cible">0</span>
             </div>
-            <div class="match-end-subtitle">Retour au lobby...</div>
         </div>
     </div>
     

@@ -1,49 +1,22 @@
 /* ═══════════════════════════════════════════════════════════════
-   SCHARMAN V4.0 - SCRIPT NUI AVEC SYSTÈME DE STATS
-   JavaScript optimisé et professionnel
+   SCHARMAN V4.0 - SCRIPT INTERFACE PROFESSIONNELLE
+   Gestion des onglets, stats, et matchmaking
    ═══════════════════════════════════════════════════════════════ */
 
 const AppState = {
     isOpen: false,
-    isAnimating: false,
-    debugMode: false,
-    countdownActive: false,
-    vehicleLockActive: false,
-    vehicleLockTimer: null,
-    timerActive: false,
-    timerInterval: null,
-    timerDuration: 0,
-    timerTimeLeft: 0,
-    timerRole: '',
-    statsOpen: false,
+    currentTab: 'lobby',
     myStats: null,
-    leaderboard: null,
-    currentTab: 'myStats' // 'myStats' ou 'leaderboard'
+    leaderboard: null
 };
 
 const Elements = {
     app: null,
     closeBtn: null,
-    gameCards: [],
-    notificationContainer: null,
-    countdownContainer: null,
-    countdownNumber: null,
-    vehicleLockContainer: null,
-    vehicleLockTimer: null,
-    vehicleLockProgress: null,
-    timerContainer: null,
-    timerValue: null,
-    timerProgressFill: null,
-    timerContent: null,
-    timerIcon: null,
-    timerTitle: null,
-    timerMessage: null,
-    statsContainer: null,
-    statsCloseBtn: null,
-    myStatsTab: null,
-    leaderboardTab: null,
-    myStatsContent: null,
-    leaderboardContent: null
+    tabs: [],
+    sections: [],
+    modeCards: [],
+    notificationContainer: null
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -51,14 +24,7 @@ const Elements = {
    ═══════════════════════════════════════════════════════════════ */
 
 function debugLog(message, type = 'info') {
-    if (!AppState.debugMode) return;
-    const styles = {
-        info: 'color: #00fff7; font-weight: bold;',
-        error: 'color: #ff0055; font-weight: bold;',
-        success: 'color: #00ff88; font-weight: bold;',
-        warning: 'color: #ff6b00; font-weight: bold;'
-    };
-    console.log(`%c[Scharman V4] ${message}`, styles[type] || styles.info);
+    console.log(`%c[Scharman] ${message}`, `color: ${type === 'error' ? '#ef4444' : '#2563eb'}`);
 }
 
 function post(action, data = {}) {
@@ -66,15 +32,72 @@ function post(action, data = {}) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
-    }).then(resp => resp.json()).then(() => {
-        debugLog(`Callback ${action} OK`, 'success');
-    }).catch(error => {
-        debugLog(`Callback ${action} FAIL: ${error}`, 'error');
-    });
+    }).catch(error => debugLog(`Callback ${action} failed: ${error}`, 'error'));
 }
 
 function formatNumber(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GESTION DES ONGLETS
+   ═══════════════════════════════════════════════════════════════ */
+
+function switchTab(tabName) {
+    if (AppState.currentTab === tabName) return;
+    
+    debugLog(`Switching to tab: ${tabName}`);
+    AppState.currentTab = tabName;
+    
+    // Mise à jour des onglets
+    Elements.tabs.forEach(tab => {
+        const isActive = tab.dataset.tab === tabName;
+        tab.classList.toggle('active', isActive);
+    });
+    
+    // Mise à jour des sections
+    Elements.sections.forEach(section => {
+        const sectionName = section.id.replace('-section', '');
+        section.classList.toggle('active', sectionName === tabName);
+    });
+    
+    // Charger les données si nécessaire
+    if (tabName === 'my-stats' && !AppState.myStats) {
+        loadMyStats();
+    } else if (tabName === 'leaderboard' && !AppState.leaderboard) {
+        loadLeaderboard();
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INTERFACE PRINCIPALE
+   ═══════════════════════════════════════════════════════════════ */
+
+function openInterface() {
+    if (AppState.isOpen) return;
+    
+    debugLog('Opening interface');
+    AppState.isOpen = true;
+    Elements.app.classList.remove('hidden');
+    
+    // Charger les stats au démarrage
+    if (!AppState.myStats) {
+        loadMyStats();
+    }
+}
+
+function closeInterface() {
+    if (!AppState.isOpen) return;
+    
+    debugLog('Closing interface');
+    AppState.isOpen = false;
+    Elements.app.classList.add('hidden');
+    post('close');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -87,181 +110,42 @@ function showNotification(message, duration = 3000, type = 'info') {
     notification.textContent = message;
     Elements.notificationContainer.appendChild(notification);
     
-    debugLog(`Notif: ${message}`, type === 'error' ? 'error' : 'info');
-    
     setTimeout(() => {
         notification.classList.add('closing');
-        setTimeout(() => {
-            if (notification.parentElement) {
-                notification.parentElement.removeChild(notification);
-            }
-        }, 200);
+        setTimeout(() => notification.remove(), 200);
     }, duration);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   INTERFACE PRINCIPALE
-   ═══════════════════════════════════════════════════════════════ */
-
-function openInterface(animationDuration = 400) {
-    if (AppState.isOpen || AppState.isAnimating) return;
-    debugLog('Opening interface...', 'info');
-    
-    AppState.isAnimating = true;
-    Elements.app.classList.remove('hidden');
-    
-    setTimeout(() => {
-        AppState.isOpen = true;
-        AppState.isAnimating = false;
-        debugLog('Interface opened', 'success');
-    }, animationDuration);
-}
-
-function closeInterface(animationDuration = 300) {
-    if (!AppState.isOpen || AppState.isAnimating) return;
-    debugLog('Closing interface...', 'info');
-    
-    AppState.isAnimating = true;
-    const tablet = Elements.app.querySelector('.tablet');
-    if (tablet) tablet.classList.add('closing');
-    
-    setTimeout(() => {
-        if (tablet) tablet.classList.remove('closing');
-        Elements.app.classList.add('hidden');
-        AppState.isOpen = false;
-        AppState.isAnimating = false;
-        debugLog('Interface closed', 'success');
-        post('close');
-    }, animationDuration);
 }
 
 /* ═══════════════════════════════════════════════════════════════
    MATCHMAKING
    ═══════════════════════════════════════════════════════════════ */
 
-function startCoursePoursuiteMode() {
-    debugLog('Starting matchmaking...', 'info');
-    showNotification('🔍 Recherche adversaire...', 2000, 'info');
-    closeInterface();
-    setTimeout(() => {
-        post('joinCoursePoursuit', {});
-    }, 400);
-}
-
-function handleCardClick(cardElement, index) {
-    debugLog(`Card ${index} clicked`, 'info');
+function startMatchmaking(mode) {
+    debugLog(`Starting matchmaking for mode: ${mode}`);
     
-    const gameMode = cardElement.getAttribute('data-mode');
-    const button = cardElement.querySelector('.btn-primary');
-    
-    if (button && button.disabled) {
-        showNotification('❌ Mode non disponible', 2000, 'warning');
-        return;
-    }
-    
-    switch (gameMode) {
-        case 'course':
-            startCoursePoursuiteMode();
-            break;
-        case 'stats':
-            openStats();
-            break;
-        default:
-            showNotification('❌ Mode non reconnu', 2000, 'error');
-            break;
+    if (mode === 'course') {
+        showNotification('🔍 Recherche d\'un adversaire...', 2000, 'info');
+        closeInterface();
+        setTimeout(() => post('joinCoursePoursuit', {}), 300);
+    } else {
+        showNotification('❌ Ce mode n\'est pas encore disponible', 2000, 'warning');
     }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   INTERFACE STATISTIQUES
+   STATISTIQUES PERSONNELLES
    ═══════════════════════════════════════════════════════════════ */
 
-function openStats() {
-    debugLog('Opening stats interface...', 'info');
-    // ✅ FIX : Ne PAS fermer l'interface, juste la cacher
-    if (Elements.app) {
-        Elements.app.classList.add('hidden');
-    }
-    
-    // Appeler le callback pour ouvrir les stats
+function loadMyStats() {
+    debugLog('Loading my stats');
     post('openStats', {});
-
-    // Déplace le setTimeout pour qu'il soit à l'intérieur de la fonction
-    setTimeout(() => {
-        post('openStats', {});
-    }, 400);
-} 
-
-
-function displayStats(data) {
-    if (!data) {
-        debugLog('No stats data received', 'error');
-        return;
-    }
-    
-    AppState.statsOpen = true;
-    AppState.myStats = data.myStats;
-    AppState.leaderboard = data.leaderboard;
-    
-    if (Elements.statsContainer) {
-        Elements.statsContainer.classList.remove('hidden');
-    }
-    
-    // Afficher l'onglet "Mes Stats" par défaut
-    showMyStats();
-    
-    debugLog('Stats interface displayed', 'success');
-}
-
-function closeStats() {
-    debugLog('Closing stats interface...', 'info');
-    
-    AppState.statsOpen = false;
-    
-    if (Elements.statsContainer) {
-        Elements.statsContainer.classList.add('hidden');
-    }
-    
-    post('closeStats');
-    
-    // Réafficher l'interface principale
-    if (Elements.app) {
-        Elements.app.classList.remove('hidden');
-    }
-}
-
-function showMyStats() {
-    AppState.currentTab = 'myStats';
-    
-    if (Elements.myStatsTab) Elements.myStatsTab.classList.add('active');
-    if (Elements.leaderboardTab) Elements.leaderboardTab.classList.remove('active');
-    
-    if (Elements.myStatsContent) Elements.myStatsContent.classList.remove('hidden');
-    if (Elements.leaderboardContent) Elements.leaderboardContent.classList.add('hidden');
-    
-    // Remplir les stats personnelles
-    if (AppState.myStats) {
-        updateMyStatsDisplay(AppState.myStats);
-    }
-}
-
-function showLeaderboard() {
-    AppState.currentTab = 'leaderboard';
-    
-    if (Elements.myStatsTab) Elements.myStatsTab.classList.remove('active');
-    if (Elements.leaderboardTab) Elements.leaderboardTab.classList.add('active');
-    
-    if (Elements.myStatsContent) Elements.myStatsContent.classList.add('hidden');
-    if (Elements.leaderboardContent) Elements.leaderboardContent.classList.remove('hidden');
-    
-    // Remplir le leaderboard
-    if (AppState.leaderboard) {
-        updateLeaderboardDisplay(AppState.leaderboard);
-    }
 }
 
 function updateMyStatsDisplay(stats) {
-    // Mise à jour des stats personnelles dans le DOM
+    debugLog('Updating my stats display');
+    AppState.myStats = stats;
+    
+    // Mise à jour des éléments DOM
     const killsEl = document.getElementById('my-kills');
     const deathsEl = document.getElementById('my-deaths');
     const ratioEl = document.getElementById('my-ratio');
@@ -279,34 +163,34 @@ function updateMyStatsDisplay(stats) {
     if (eloEl) eloEl.textContent = formatNumber(stats.elo);
     if (rankEl) rankEl.textContent = stats.rank;
     if (rankIconEl) rankIconEl.textContent = stats.rankData.icon;
-    
-    // Couleur du rang
-    if (rankEl && stats.rankData) {
-        rankEl.style.color = `rgb(${stats.rankData.color.r}, ${stats.rankData.color.g}, ${stats.rankData.color.b})`;
-    }
-    
-    debugLog('My stats updated', 'success');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CLASSEMENT GLOBAL
+   ═══════════════════════════════════════════════════════════════ */
+
+function loadLeaderboard() {
+    debugLog('Loading leaderboard');
+    post('getLeaderboard', { limit: 50 });
 }
 
 function updateLeaderboardDisplay(leaderboard) {
-    const leaderboardBody = document.getElementById('leaderboard-body');
+    debugLog(`Updating leaderboard with ${leaderboard.length} players`);
+    AppState.leaderboard = leaderboard;
     
-    if (!leaderboardBody) {
-        debugLog('Leaderboard body not found', 'error');
-        return;
-    }
+    const tbody = document.getElementById('leaderboard-body');
+    if (!tbody) return;
     
-    leaderboardBody.innerHTML = '';
+    tbody.innerHTML = '';
     
     if (!leaderboard || leaderboard.length === 0) {
-        leaderboardBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">Aucune donnée disponible</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-tertiary);">Aucune donnée disponible</td></tr>';
         return;
     }
     
     leaderboard.forEach(player => {
         const row = document.createElement('tr');
         
-        // Position
         let positionClass = '';
         if (player.position === 1) positionClass = 'first';
         else if (player.position === 2) positionClass = 'second';
@@ -319,86 +203,106 @@ function updateLeaderboardDisplay(leaderboard) {
             <td>${formatNumber(player.deaths)}</td>
             <td>${player.ratio.toFixed(2)}</td>
             <td class="elo">${formatNumber(player.elo)}</td>
-            <td class="rank" style="color: rgb(${player.rankData.color.r}, ${player.rankData.color.g}, ${player.rankData.color.b})">
-                ${player.rankData.icon} ${player.rank}
+            <td class="rank">
+                <span>${player.rankData.icon}</span>
+                <span>${player.rank}</span>
             </td>
         `;
         
-        leaderboardBody.appendChild(row);
+        tbody.appendChild(row);
     });
-    
-    debugLog('Leaderboard updated with ' + leaderboard.length + ' players', 'success');
-}
-
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   COUNTDOWN - 3 2 1 GO
+   ÉCRANS DE JEU (COUNTDOWN, TIMERS, ETC.)
    ═══════════════════════════════════════════════════════════════ */
 
+// Countdown
 function showCountdown(number) {
-    debugLog(`Countdown: ${number}`, 'info');
+    const container = document.getElementById('countdown-container');
+    const numberEl = container.querySelector('.countdown-number');
     
-    AppState.countdownActive = true;
-    Elements.countdownContainer.classList.remove('hidden');
-    Elements.countdownNumber.textContent = number;
-    
-    if (number === 'GO!') {
-        Elements.countdownNumber.classList.add('go');
-    } else {
-        Elements.countdownNumber.classList.remove('go');
-    }
+    container.classList.remove('hidden');
+    numberEl.textContent = number;
+    numberEl.classList.toggle('go', number === 'GO!');
     
     // Reset animation
-    Elements.countdownNumber.style.animation = 'none';
-    void Elements.countdownNumber.offsetWidth;
-    Elements.countdownNumber.style.animation = '';
+    numberEl.style.animation = 'none';
+    void numberEl.offsetWidth;
+    numberEl.style.animation = '';
 }
 
 function hideCountdown() {
-    debugLog('Hiding countdown', 'info');
-    AppState.countdownActive = false;
-    Elements.countdownContainer.classList.add('hidden');
-    Elements.countdownNumber.classList.remove('go');
+    document.getElementById('countdown-container').classList.add('hidden');
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   VEHICLE LOCK
-   ═══════════════════════════════════════════════════════════════ */
+// Timer
+let timerInterval = null;
+let timerTimeLeft = 0;
+let timerDuration = 0;
+
+function showTimer(data) {
+    const container = document.getElementById('timer-container');
+    const valueEl = document.getElementById('timer-value');
+    const progressEl = document.getElementById('timer-progress-fill');
+    
+    timerDuration = data.duration;
+    timerTimeLeft = data.duration;
+    
+    container.classList.remove('hidden');
+    valueEl.textContent = timerTimeLeft + 's';
+    progressEl.style.width = '100%';
+    
+    if (timerInterval) clearInterval(timerInterval);
+    
+    timerInterval = setInterval(() => {
+        timerTimeLeft--;
+        
+        if (timerTimeLeft <= 0) {
+            hideTimer();
+            return;
+        }
+        
+        valueEl.textContent = timerTimeLeft + 's';
+        const progress = (timerTimeLeft / timerDuration) * 100;
+        progressEl.style.width = progress + '%';
+    }, 1000);
+}
+
+function hideTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    document.getElementById('timer-container').classList.add('hidden');
+}
+
+// Vehicle Lock
+let vehicleLockTimer = null;
 
 function showVehicleLock(duration = 30000) {
-    debugLog(`Vehicle lock: ${duration}ms`, 'info');
+    const container = document.getElementById('vehicle-lock-container');
+    const timerEl = document.getElementById('vehicle-lock-timer');
+    const progressEl = document.getElementById('vehicle-lock-progress');
     
-    AppState.vehicleLockActive = true;
-    Elements.vehicleLockContainer.classList.remove('hidden');
-    Elements.vehicleLockProgress.style.width = '100%';
+    container.classList.remove('hidden');
+    progressEl.style.width = '100%';
     
     let timeLeft = duration / 1000;
-    Elements.vehicleLockTimer.textContent = `${timeLeft}s`;
+    timerEl.textContent = `${timeLeft}s`;
     
     const startTime = Date.now();
     
-    if (AppState.vehicleLockTimer) {
-        clearInterval(AppState.vehicleLockTimer);
-    }
+    if (vehicleLockTimer) clearInterval(vehicleLockTimer);
     
-    AppState.vehicleLockTimer = setInterval(() => {
+    vehicleLockTimer = setInterval(() => {
         const elapsed = Date.now() - startTime;
         const remaining = Math.max(0, duration - elapsed);
         timeLeft = Math.ceil(remaining / 1000);
         
-        Elements.vehicleLockTimer.textContent = `${timeLeft}s`;
+        timerEl.textContent = `${timeLeft}s`;
         const progress = (remaining / duration) * 100;
-        Elements.vehicleLockProgress.style.width = `${progress}%`;
+        progressEl.style.width = `${progress}%`;
         
         if (remaining <= 0) {
             hideVehicleLock();
@@ -407,171 +311,48 @@ function showVehicleLock(duration = 30000) {
 }
 
 function hideVehicleLock() {
-    debugLog('Hiding vehicle lock', 'info');
-    
-    if (AppState.vehicleLockTimer) {
-        clearInterval(AppState.vehicleLockTimer);
-        AppState.vehicleLockTimer = null;
+    if (vehicleLockTimer) {
+        clearInterval(vehicleLockTimer);
+        vehicleLockTimer = null;
     }
-    
-    AppState.vehicleLockActive = false;
-    Elements.vehicleLockContainer.classList.add('hidden');
+    document.getElementById('vehicle-lock-container').classList.add('hidden');
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   TIMER CHASSEUR/CIBLE
-   ═══════════════════════════════════════════════════════════════ */
-
-function showTimer(data) {
-    debugLog(`Timer ${data.role}: ${data.duration}s`, 'info');
-    
-    AppState.timerActive = true;
-    AppState.timerDuration = data.duration;
-    AppState.timerTimeLeft = data.duration;
-    AppState.timerRole = data.role;
-    
-    const container = Elements.timerContainer;
-    const content = container.querySelector('.timer-content');
-    const icon = container.querySelector('.timer-icon');
-    const title = container.querySelector('.timer-title');
-    const message = container.querySelector('.timer-message');
-    
-    // Configuration selon le rôle
-    content.classList.remove('chasseur', 'cible');
-    
-    if (data.role === 'chasseur') {
-        content.classList.add('chasseur');
-        icon.textContent = '🔫';
-        title.textContent = 'TIMER CHASSEUR';
-    } else {
-        content.classList.add('cible');
-        icon.textContent = '🎯';
-        title.textContent = 'TIMER CIBLE';
-    }
-    
-    message.textContent = data.message || 'Temps restant...';
-    Elements.timerValue.textContent = AppState.timerTimeLeft + 's';
-    Elements.timerProgressFill.style.width = '100%';
-    Elements.timerValue.classList.remove('warning', 'critical');
-    
-    container.classList.remove('hidden');
-    
-    // Démarrer le compte à rebours
-    if (AppState.timerInterval) {
-        clearInterval(AppState.timerInterval);
-    }
-    
-    AppState.timerInterval = setInterval(() => {
-        AppState.timerTimeLeft--;
-        
-        if (AppState.timerTimeLeft <= 0) {
-            hideTimer();
-            return;
-        }
-        
-        Elements.timerValue.textContent = AppState.timerTimeLeft + 's';
-        
-        const progress = (AppState.timerTimeLeft / AppState.timerDuration) * 100;
-        Elements.timerProgressFill.style.width = progress + '%';
-        
-        // Changement de couleur
-        Elements.timerValue.classList.remove('warning', 'critical');
-        if (AppState.timerTimeLeft <= 10) {
-            Elements.timerValue.classList.add('critical');
-        } else if (AppState.timerTimeLeft <= 30) {
-            Elements.timerValue.classList.add('warning');
-        }
-    }, 1000);
-}
-
-function updateTimer(data) {
-    if (!AppState.timerActive) return;
-    
-    AppState.timerTimeLeft = data.timeLeft;
-    Elements.timerValue.textContent = AppState.timerTimeLeft + 's';
-    
-    const progress = (AppState.timerTimeLeft / AppState.timerDuration) * 100;
-    Elements.timerProgressFill.style.width = progress + '%';
-    
-    Elements.timerValue.classList.remove('warning', 'critical');
-    if (AppState.timerTimeLeft <= 10) {
-        Elements.timerValue.classList.add('critical');
-    } else if (AppState.timerTimeLeft <= 30) {
-        Elements.timerValue.classList.add('warning');
-    }
-}
-
-function hideTimer() {
-    debugLog('Hiding timer', 'info');
-    
-    if (AppState.timerInterval) {
-        clearInterval(AppState.timerInterval);
-        AppState.timerInterval = null;
-    }
-    
-    AppState.timerActive = false;
-    Elements.timerContainer.classList.add('hidden');
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   ÉCRANS DE FIN
-   ═══════════════════════════════════════════════════════════════ */
-
+// Death/Victory screens
 function showDeathScreen() {
-    debugLog('Showing death screen', 'error');
-    const container = document.getElementById('death-screen-container');
-    if (container) container.classList.remove('hidden');
+    document.getElementById('death-screen-container').classList.remove('hidden');
 }
 
 function hideDeathScreen() {
-    debugLog('Hiding death screen', 'info');
-    const container = document.getElementById('death-screen-container');
-    if (container) container.classList.add('hidden');
+    document.getElementById('death-screen-container').classList.add('hidden');
 }
 
 function showVictoryScreen() {
-    debugLog('Showing victory screen', 'success');
-    const container = document.getElementById('victory-screen-container');
-    if (container) container.classList.remove('hidden');
+    document.getElementById('victory-screen-container').classList.remove('hidden');
 }
 
 function hideVictoryScreen() {
-    debugLog('Hiding victory screen', 'info');
-    const container = document.getElementById('victory-screen-container');
-    if (container) container.classList.add('hidden');
+    document.getElementById('victory-screen-container').classList.add('hidden');
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   SCOREBOARD
-   ═══════════════════════════════════════════════════════════════ */
-
+// Scoreboard
 function showRoundScoreboard(data) {
-    debugLog(`Scoreboard: Round ${data.round}`, 'info');
-    
     const container = document.getElementById('round-scoreboard-container');
-    const roundNumber = document.getElementById('round-number');
-    const scoreChasseur = document.getElementById('score-chasseur');
-    const scoreCible = document.getElementById('score-cible');
-    const nextRoundNumber = document.getElementById('next-round-number');
-    const nextRoundTimer = document.getElementById('next-round-timer');
-    
-    if (!container) return;
-    
-    roundNumber.textContent = data.round;
-    scoreChasseur.textContent = data.score.chasseur;
-    scoreCible.textContent = data.score.cible;
-    nextRoundNumber.textContent = data.round + 1;
+    document.getElementById('round-number').textContent = data.round;
+    document.getElementById('score-chasseur').textContent = data.score.chasseur;
+    document.getElementById('score-cible').textContent = data.score.cible;
+    document.getElementById('next-round-number').textContent = data.round + 1;
     
     container.classList.remove('hidden');
     
-    // Countdown timer
     let timeLeft = Math.floor(data.timeUntilNext / 1000);
-    nextRoundTimer.textContent = timeLeft;
+    const timerEl = document.getElementById('next-round-timer');
+    timerEl.textContent = timeLeft;
     
     const countdown = setInterval(() => {
         timeLeft--;
         if (timeLeft > 0) {
-            nextRoundTimer.textContent = timeLeft;
+            timerEl.textContent = timeLeft;
         } else {
             clearInterval(countdown);
         }
@@ -579,46 +360,30 @@ function showRoundScoreboard(data) {
 }
 
 function hideRoundScoreboard() {
-    debugLog('Hiding scoreboard', 'info');
-    const container = document.getElementById('round-scoreboard-container');
-    if (container) container.classList.add('hidden');
+    document.getElementById('round-scoreboard-container').classList.add('hidden');
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MATCH END
-   ═══════════════════════════════════════════════════════════════ */
-
+// Match end
 function showMatchEnd(data) {
-    debugLog(`Match end: ${data.winner}`, 'success');
-    
     const container = document.getElementById('match-end-container');
     const title = document.getElementById('match-end-title');
-    const trophy = container.querySelector('.match-end-trophy');
-    const finalScoreChasseur = document.getElementById('final-score-chasseur');
-    const finalScoreCible = document.getElementById('final-score-cible');
-    
-    if (!container) return;
     
     if (data.winner === 'me') {
         title.textContent = 'VICTOIRE !';
-        title.classList.remove('defeat');
-        trophy.textContent = '🏆';
+        title.style.color = 'var(--success)';
     } else {
         title.textContent = 'DÉFAITE';
-        title.classList.add('defeat');
-        trophy.textContent = '💀';
+        title.style.color = 'var(--error)';
     }
     
-    finalScoreChasseur.textContent = data.finalScore.chasseur;
-    finalScoreCible.textContent = data.finalScore.cible;
+    document.getElementById('final-score-chasseur').textContent = data.finalScore.chasseur;
+    document.getElementById('final-score-cible').textContent = data.finalScore.cible;
     
     container.classList.remove('hidden');
 }
 
 function hideMatchEnd() {
-    debugLog('Hiding match end', 'info');
-    const container = document.getElementById('match-end-container');
-    if (container) container.classList.add('hidden');
+    document.getElementById('match-end-container').classList.add('hidden');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -626,63 +391,37 @@ function hideMatchEnd() {
    ═══════════════════════════════════════════════════════════════ */
 
 function initEventListeners() {
-    debugLog('Initializing event listeners...', 'info');
+    debugLog('Initializing event listeners');
     
     // Close button
     if (Elements.closeBtn) {
-        Elements.closeBtn.addEventListener('click', () => {
-            debugLog('Close button clicked', 'info');
-            closeInterface();
-        });
-    }
-    
-    // Stats close button
-    if (Elements.statsCloseBtn) {
-        Elements.statsCloseBtn.addEventListener('click', () => {
-            debugLog('Stats close button clicked', 'info');
-            closeStats();
-        });
+        Elements.closeBtn.addEventListener('click', closeInterface);
     }
     
     // Tabs
-    if (Elements.myStatsTab) {
-        Elements.myStatsTab.addEventListener('click', () => showMyStats());
-    }
+    Elements.tabs.forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
     
-    if (Elements.leaderboardTab) {
-        Elements.leaderboardTab.addEventListener('click', () => showLeaderboard());
-    }
+    // Mode cards
+    Elements.modeCards.forEach(card => {
+        card.addEventListener('click', () => {
+            if (!card.classList.contains('disabled')) {
+                const mode = card.dataset.mode;
+                startMatchmaking(mode);
+            }
+        });
+    });
     
     // Escape key
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            if (AppState.statsOpen) {
-                closeStats();
-            } else if (AppState.isOpen) {
-                closeInterface();
-            }
+        if (event.key === 'Escape' && AppState.isOpen) {
+            closeInterface();
         }
     });
     
     // Disable right click
     document.addEventListener('contextmenu', (e) => e.preventDefault());
-    
-    // Game cards
-    Elements.gameCards.forEach((card, index) => {
-        card.addEventListener('click', () => handleCardClick(card, index));
-        
-        const button = card.querySelector('.btn-primary');
-        if (button) {
-            button.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (!button.disabled) {
-                    handleCardClick(card, index);
-                }
-            });
-        }
-    });
-    
-    debugLog('Event listeners initialized', 'success');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -693,17 +432,17 @@ window.addEventListener('message', (event) => {
     const data = event.data;
     if (!data || !data.action) return;
     
-    debugLog(`Message: ${data.action}`, 'info');
+    debugLog(`Message received: ${data.action}`);
     
     switch (data.action) {
         case 'open':
-            openInterface(data.data?.animationDuration || 400);
+            openInterface();
             break;
         case 'close':
-            closeInterface(data.data?.animationDuration || 300);
+            closeInterface();
             break;
         case 'showNotification':
-            showNotification(data.data.message, data.data.duration || 3000, data.data.type || 'info');
+            showNotification(data.data.message, data.data.duration, data.data.type);
             break;
         case 'showCountdown':
             showCountdown(data.data.number);
@@ -712,7 +451,7 @@ window.addEventListener('message', (event) => {
             hideCountdown();
             break;
         case 'showVehicleLock':
-            showVehicleLock(data.data.duration || 30000);
+            showVehicleLock(data.data.duration);
             break;
         case 'hideVehicleLock':
             hideVehicleLock();
@@ -721,7 +460,7 @@ window.addEventListener('message', (event) => {
             showTimer(data.data);
             break;
         case 'updateTimer':
-            updateTimer(data.data);
+            // Timer mise à jour géré par l'interval
             break;
         case 'hideTimer':
             hideTimer();
@@ -751,13 +490,12 @@ window.addEventListener('message', (event) => {
             hideMatchEnd();
             break;
         case 'openStats':
-            displayStats(data.data);
-            break;
-        case 'closeStats':
-            // ✅ FIX : Ignorer ce message pour éviter la boucle
-            // La fermeture est gérée par le bouton qui appelle closeStats()
-            debugLog('Received closeStats message - ignored to prevent loop', 'info');
-            break;
+            if (data.data && data.data.myStats) {
+                updateMyStatsDisplay(data.data.myStats);
+            }
+            if (data.data && data.data.leaderboard) {
+                updateLeaderboardDisplay(data.data.leaderboard);
+            }
             break;
         case 'updateMyStats':
             updateMyStatsDisplay(data.data);
@@ -773,51 +511,32 @@ window.addEventListener('message', (event) => {
    ═══════════════════════════════════════════════════════════════ */
 
 function init() {
-    debugLog('═══════════════════════════════════════', 'info');
-    debugLog('Scharman NUI V4.0 - Initializing...', 'info');
-    debugLog('═══════════════════════════════════════', 'info');
+    debugLog('═══════════════════════════════════════');
+    debugLog('Scharman NUI V4.0 - Professional UI');
+    debugLog('═══════════════════════════════════════');
     
-    // Cache DOM elements
+    // Cache des éléments DOM
     Elements.app = document.getElementById('app');
     Elements.closeBtn = document.getElementById('closeBtn');
-    Elements.gameCards = Array.from(document.querySelectorAll('.game-card'));
+    Elements.tabs = Array.from(document.querySelectorAll('.app-tab'));
+    Elements.sections = Array.from(document.querySelectorAll('.content-section'));
+    Elements.modeCards = Array.from(document.querySelectorAll('.mode-card, .mode-card-main'));
     Elements.notificationContainer = document.getElementById('notification-container');
-    Elements.countdownContainer = document.getElementById('countdown-container');
-    Elements.countdownNumber = Elements.countdownContainer?.querySelector('.countdown-number');
-    Elements.vehicleLockContainer = document.getElementById('vehicle-lock-container');
-    Elements.vehicleLockTimer = document.getElementById('vehicle-lock-timer');
-    Elements.vehicleLockProgress = document.getElementById('vehicle-lock-progress');
-    Elements.timerContainer = document.getElementById('timer-container');
-    Elements.timerValue = document.getElementById('timer-value');
-    Elements.timerProgressFill = document.getElementById('timer-progress-fill');
-    Elements.statsContainer = document.getElementById('stats-container');
-    Elements.statsCloseBtn = document.getElementById('stats-close-btn');
-    Elements.myStatsTab = document.getElementById('my-stats-tab');
-    Elements.leaderboardTab = document.getElementById('leaderboard-tab');
-    Elements.myStatsContent = document.getElementById('my-stats-content');
-    Elements.leaderboardContent = document.getElementById('leaderboard-content');
     
-    // Validate required elements
-    if (!Elements.app || !Elements.closeBtn || !Elements.notificationContainer) {
+    // Validation
+    if (!Elements.app || !Elements.notificationContainer) {
         debugLog('ERROR: Required elements missing!', 'error');
         return;
     }
     
-    // Initialize
+    // Initialisation
     initEventListeners();
     Elements.app.classList.add('hidden');
-    if (Elements.statsContainer) Elements.statsContainer.classList.add('hidden');
     
-    debugLog('═══════════════════════════════════════', 'info');
-    debugLog('Scharman NUI V4.0 - Ready!', 'success');
-    debugLog('- Timer system: OK', 'success');
-    debugLog('- Countdown: OK', 'success');
-    debugLog('- Scoreboard: OK', 'success');
-    debugLog('- Stats system: OK', 'success');
-    debugLog('═══════════════════════════════════════', 'info');
+    debugLog('Scharman NUI V4.0 - Ready!');
 }
 
-// Start
+// Démarrage
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {

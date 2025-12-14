@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- SERVER - MODE COURSE POURSUITE V4.0.0 - SYSTÈME DE TIMERS
+-- SERVER - MODE COURSE POURSUITE V4.0.1 - FIX SYNCHRONISATION
 -- ═══════════════════════════════════════════════════════════════
 
 ESX = exports['es_extended']:getSharedObject()
@@ -79,7 +79,10 @@ local function CreateInstance(chasseurId, cibleId)
         playerBId = cibleId,
         roundInProgress = false,
         matchFinished = false,
-        vehicles = {}
+        vehicles = {},
+        -- ✅ NOUVEAU V4.0.1: État de synchronisation
+        readyPlayers = {},
+        allPlayersReady = false
     }
     
     SetRoutingBucketPopulationEnabled(bucket, false)
@@ -119,6 +122,41 @@ local function DeleteInstance(instanceId)
     Config.SuccessPrint('Instance supprimée: ' .. instanceId)
     
     return true
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ✅ NOUVEAU V4.0.1: VÉRIFICATION JOUEURS PRÊTS
+-- ═══════════════════════════════════════════════════════════════
+
+local function CheckAndStartGame(instanceId)
+    local instance = activeInstances[instanceId]
+    if not instance then
+        Config.ErrorPrint('[SYNC] Instance introuvable: ' .. tostring(instanceId))
+        return
+    end
+    
+    local chasseurReady = instance.readyPlayers[instance.players.chasseur] == true
+    local cibleReady = instance.readyPlayers[instance.players.cible] == true
+    
+    Config.InfoPrint('[SYNC] État ready:')
+    Config.InfoPrint('  CHASSEUR ' .. instance.players.chasseur .. ': ' .. tostring(chasseurReady))
+    Config.InfoPrint('  CIBLE ' .. instance.players.cible .. ': ' .. tostring(cibleReady))
+    
+    if chasseurReady and cibleReady and not instance.allPlayersReady then
+        instance.allPlayersReady = true
+        
+        Config.SuccessPrint('[SYNC] ✅ LES DEUX JOUEURS SONT PRÊTS!')
+        Config.InfoPrint('[SYNC] 🚀 LANCEMENT SYNCHRONISÉ DU DÉCOMPTE')
+        
+        -- Petite attente pour s'assurer que tout est en place
+        Wait(500)
+        
+        -- Envoyer le signal de démarrage aux deux joueurs EN MÊME TEMPS
+        TriggerClientEvent('scharman:client:startSynchronizedGame', instance.players.chasseur)
+        TriggerClientEvent('scharman:client:startSynchronizedGame', instance.players.cible)
+        
+        Config.SuccessPrint('[SYNC] Signal de démarrage envoyé aux deux joueurs!')
+    end
 end
 
 -- ═══════════════════════════════════════════════════════════════
@@ -178,7 +216,8 @@ local function AddPlayerToInstance(playerId, instance, role)
         return false
     end
     
-    TriggerClientEvent('scharman:client:startCoursePoursuit', playerId, {
+    -- ✅ NOUVEAU V4.0.1: Envoyer événement de PRÉPARATION (pas de countdown encore)
+    TriggerClientEvent('scharman:client:prepareCoursePoursuit', playerId, {
         instanceId = instance.id,
         spawnCoords = Config.CoursePoursuit.SpawnCoords[role],
         vehicleModel = instance.vehicleModel,
@@ -188,7 +227,7 @@ local function AddPlayerToInstance(playerId, instance, role)
         opponentId = opponentId
     })
     
-    Config.SuccessPrint('Joueur ' .. playerId .. ' ajouté à l\'instance (Rôle: ' .. string.upper(role) .. ')')
+    Config.SuccessPrint('Joueur ' .. playerId .. ' en préparation (Rôle: ' .. string.upper(role) .. ')')
     
     return true
 end
@@ -274,11 +313,16 @@ local function StartMatchmaking(playerId)
         end
         
         Wait(500)
+        
+        -- ✅ NOUVEAU V4.0.1: Lancer la préparation des deux joueurs EN MÊME TEMPS
+        Config.InfoPrint('[SYNC] Lancement préparation simultanée des deux joueurs...')
+        
         AddPlayerToInstance(chasseurId, instance, 'chasseur')
-        Wait(500)
         AddPlayerToInstance(cibleId, instance, 'cible')
         
-        Config.SuccessPrint('PARTIE LANCÉE:')
+        -- Les joueurs vont signaler quand ils sont prêts via l'événement playerReady
+        
+        Config.SuccessPrint('PRÉPARATION PARTIE LANCÉE:')
         Config.InfoPrint('  CHASSEUR: ' .. xOpponent.getName() .. ' [' .. opponentId .. ']')
         Config.InfoPrint('  CIBLE: ' .. xPlayer.getName() .. ' [' .. playerId .. ']')
     else
@@ -289,6 +333,33 @@ local function StartMatchmaking(playerId)
             '⏳ En attente d\'un adversaire...', 5000, 'info')
     end
 end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ✅ NOUVEAU V4.0.1: ÉVÉNEMENT JOUEUR PRÊT
+-- ═══════════════════════════════════════════════════════════════
+
+RegisterNetEvent('scharman:server:playerReady', function(instanceId)
+    local source = source
+    local instance = activeInstances[instanceId]
+    
+    if not instance then
+        Config.ErrorPrint('[SYNC] Instance introuvable: ' .. tostring(instanceId))
+        return
+    end
+    
+    local playerData = playersInGame[source]
+    if not playerData then
+        Config.ErrorPrint('[SYNC] Joueur introuvable: ' .. source)
+        return
+    end
+    
+    Config.InfoPrint('[SYNC] ✅ Joueur ' .. source .. ' (' .. string.upper(playerData.role) .. ') est prêt!')
+    
+    instance.readyPlayers[source] = true
+    
+    -- Vérifier si les deux joueurs sont prêts
+    CheckAndStartGame(instanceId)
+end)
 
 -- ═══════════════════════════════════════════════════════════════
 -- GESTION ZONE DE GUERRE
@@ -470,7 +541,6 @@ local function EndMatch(instance, winnerId)
     
     Config.InfoPrint('[MATCH] Match terminé - Gagnant final: ' .. winnerId)
     
-    
     TriggerClientEvent('scharman:client:showMatchEnd', chasseurId, {
         winner = (winnerId == chasseurId) and 'me' or 'opponent',
         finalScore = instance.score,
@@ -500,6 +570,10 @@ end
 local function StartNextRound(instance)
     instance.currentRound = instance.currentRound + 1
     instance.roundInProgress = false
+    
+    -- ✅ NOUVEAU V4.0.1: Reset état de synchronisation
+    instance.readyPlayers = {}
+    instance.allPlayersReady = false
     
     if instance.currentRound > 1 then
         local tempChasseur = instance.players.chasseur
@@ -584,6 +658,7 @@ local function StartNextRound(instance)
     
     instance.roundInProgress = true
     
+    -- ✅ NOUVEAU V4.0.1: Envoyer la préparation du round (sans countdown)
     TriggerClientEvent('scharman:client:startNextRound', chasseurId, {
         instanceId = instance.id,
         round = instance.currentRound,
@@ -602,8 +677,57 @@ local function StartNextRound(instance)
         role = 'cible'
     })
     
-    Config.SuccessPrint('[ROUND] Manche ' .. instance.currentRound .. ' lancée avec succès!')
+    Config.SuccessPrint('[ROUND] Préparation manche ' .. instance.currentRound .. ' envoyée!')
+    -- Les joueurs signaleront via roundPlayerReady quand ils sont prêts
 end
+
+-- ✅ NOUVEAU V4.0.1: ÉVÉNEMENT JOUEUR PRÊT POUR ROUND
+RegisterNetEvent('scharman:server:roundPlayerReady', function(instanceId, round)
+    local source = source
+    local instance = activeInstances[instanceId]
+    
+    if not instance then
+        Config.ErrorPrint('[SYNC ROUND] Instance introuvable: ' .. tostring(instanceId))
+        return
+    end
+    
+    if instance.currentRound ~= round then
+        Config.ErrorPrint('[SYNC ROUND] Round mismatch! Instance: ' .. instance.currentRound .. ' vs Joueur: ' .. round)
+        return
+    end
+    
+    local playerData = playersInGame[source]
+    if not playerData then
+        Config.ErrorPrint('[SYNC ROUND] Joueur introuvable: ' .. source)
+        return
+    end
+    
+    Config.InfoPrint('[SYNC ROUND] ✅ Joueur ' .. source .. ' (' .. string.upper(playerData.role) .. ') prêt pour manche ' .. round)
+    
+    instance.readyPlayers[source] = true
+    
+    local chasseurReady = instance.readyPlayers[instance.players.chasseur] == true
+    local cibleReady = instance.readyPlayers[instance.players.cible] == true
+    
+    Config.InfoPrint('[SYNC ROUND] État ready:')
+    Config.InfoPrint('  CHASSEUR ' .. instance.players.chasseur .. ': ' .. tostring(chasseurReady))
+    Config.InfoPrint('  CIBLE ' .. instance.players.cible .. ': ' .. tostring(cibleReady))
+    
+    if chasseurReady and cibleReady and not instance.allPlayersReady then
+        instance.allPlayersReady = true
+        
+        Config.SuccessPrint('[SYNC ROUND] ✅ LES DEUX JOUEURS SONT PRÊTS POUR MANCHE ' .. round .. '!')
+        Config.InfoPrint('[SYNC ROUND] 🚀 LANCEMENT SYNCHRONISÉ DU DÉCOMPTE')
+        
+        Wait(500)
+        
+        -- Envoyer le signal de démarrage synchronisé
+        TriggerClientEvent('scharman:client:startSynchronizedRound', instance.players.chasseur)
+        TriggerClientEvent('scharman:client:startSynchronizedRound', instance.players.cible)
+        
+        Config.SuccessPrint('[SYNC ROUND] Signal de démarrage manche envoyé!')
+    end
+end)
 
 -- ✅ NOUVELLE FONCTION V4.0: Gestion de fin de round (pour morts ET timeouts)
 function HandleRoundEnd(instance, winnerId)
@@ -771,6 +895,7 @@ RegisterCommand('course_instances', function(source, args, rawCommand)
         print(string.format('   Manche: %d | Score: Joueur A: %d - Joueur B: %d', instance.currentRound, instance.score.playerA, instance.score.playerB))
         print(string.format('   Véhicule: %s', instance.vehicleModel))
         print(string.format('   Zone active: %s', instance.warZone.active and 'OUI' or 'NON'))
+        print(string.format('   Joueurs prêts: %s', instance.allPlayersReady and 'OUI' or 'NON'))
     end
     if count == 0 then print('Aucune instance active') end
     print('═══════════════════════════════════════════════════════════════')
@@ -815,4 +940,4 @@ AddEventHandler('onResourceStop', function(resourceName)
     end
 end)
 
-Config.DebugPrint('server/course_poursuite.lua V4.0.0 chargé')
+Config.DebugPrint('server/course_poursuite.lua V4.0.1 - FIX SYNCHRONISATION chargé')
